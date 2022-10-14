@@ -1,4 +1,13 @@
-from pyglet import shapes
+from pyglet import shapes, window
+
+#windows lines hardcoded
+window_lines = [
+    [(0, 0), (640, 0)],
+    [(640, 0), (640, 480)],
+    [(0, 0), (0, 480)],
+    [(0, 480), (640, 480)]
+]
+
 #obstacle
 
 obstacles = []

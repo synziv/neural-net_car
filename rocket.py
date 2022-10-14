@@ -23,15 +23,7 @@ class rocket:
         self.sprite = shapes.Rectangle(0, 0, 30, 60, color=(255, 22, 20), batch=batch)
         self.sprite.anchor_x = self.sprite.width / 2
         self.sprite.anchor_y = self.sprite.height / 2
-        
-
-        # self.vision_lines = [
-        #     (shapes.Rectangle(self.position[0], self.position[1], 2, 400, color=(255, 22, 20), batch=batch), 0),
-        #     (shapes.Rectangle(self.position[0], self.position[1], 2, 400, color=(255, 22, 20), batch=batch), 15),
-        #     (shapes.Rectangle(self.position[0], self.position[1], 2, 400, color=(255, 22, 20), batch=batch), -15)
-        # ]
-        #self.circle = shapes.Circle(self.position[0] + 250, self.position[1], 5, color=(255, 255, 255), batch=batch)
-        #self.collision = shapes.Circle(0, 0, 5, color=(255, 255, 255), batch=batch)
+        self.dead = False
 
         self.vision_lines = [
             vision_line(self.position, 0, batch),
@@ -48,9 +40,6 @@ class rocket:
     
 
     def getControls(self, dt, keys):
-        # if(self.test < 10):
-        #     self.rotation = self.rotation + dt * self.rotate_speed
-        #     self.test = self.test + 1
         if keys[key.LEFT]:
             self.rotation = self.rotation + dt * self.rotate_speed
 
@@ -74,6 +63,11 @@ class rocket:
 
         
 
+        
+    
+    def update(self, dt, keys):
+        self.getControls(dt, keys)
+
         self.x_speed = math.cos(self.rotation) * self.acceleration
         self.y_speed = math.sin(self.rotation) * self.acceleration   
         self.position = (self.position[0] + dt * self.x_speed, self.position[1] + dt * self.y_speed)
@@ -87,11 +81,11 @@ class rocket:
         for vision_line in self.vision_lines:
             vision_line.update(rotation_degree, self.position)
         
-        collision = False
         for obstacle in map.obstacles:
             if(collides_with(self.sprite, obstacle.sprite)):
-                collision = True
-        if(collision):
+                self.dead = True
+                
+        if(self.dead):
             self.sprite.color = (255, 255, 255)
         else:
             self.sprite.color = (255, 22, 20)

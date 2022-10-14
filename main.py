@@ -1,6 +1,3 @@
-from cmath import rect
-from select import kevent
-from pygame import init
 import pyglet
 from pyglet.gl import *
 
@@ -9,8 +6,6 @@ from pyglet import clock
 from pyglet.window import key
 from map import initObstacle
 from rocket import rocket
-from map import obstacle
-import math
 
 
 
@@ -42,7 +37,7 @@ def on_draw():
 
 
 def update(dt):
-    rocket.getControls(dt, keys)
+    rocket.update(dt, keys)
     #rocket.check_collisions(obstacle)
     
 

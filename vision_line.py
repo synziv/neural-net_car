@@ -35,7 +35,12 @@ class vision_line:
     
 
     def check_collisions(self):
+        collided_with_obstacles = self.check_colisions_obstacles()
         
+        if(not collided_with_obstacles):
+            self.check_collisions_window()
+
+    def check_colisions_obstacles(self):
         #calculer la dist la plus courte pour afficher le point le plus proche slm
         is_collision = False
         smallest_dist = 1000
@@ -45,27 +50,30 @@ class vision_line:
             for line in obstacle.obstacle_lines:
                 collision_point = getCollisionPoint(origin[0], origin[1], end[0], end[1], line[0][0], line[0][1], line[1][0],line[1][1])
                 if(collision_point != None):
-                    dist = math.dist(origin, collision_point)
-                    
+                    dist = math.dist(origin, collision_point)            
                     is_collision = True
                     if(dist < smallest_dist):
                         smallest_dist = dist
-                        #print(self.collision_dist)
                         self.collision_point_sprite.visible = True
                         self.collision_point_sprite.position =  collision_point
                         self.collision_point = collision_point
-
-                        #update end of vision_line to collision point
-                        # self.line.x2 = collision_point[0]
-                        # self.line.y2 = collision_point[1]
-                        # self.end = collision_point
-
-                        #self.collision_dist = dist
                 elif not is_collision:
                     self.collision_point_sprite.visible = False
                     self.collision_point = []
+        return is_collision
+    
+    def check_collisions_window(self):
+        origin = (self.line.x, self.line.y)
+        is_collision = False
 
-                    # self.line.x2 = last_end_point[0]
-                    # self.line.y2 = last_end_point[1]
-                    # self.end = last_end_point
-                    #self.collision_dist = 1000
+        for line in map.window_lines:
+            collision_point = getCollisionPoint(origin[0], origin[1], self.line.x2, self.line.y2, line[0][0], line[0][1], line[1][0],line[1][1])
+            if(collision_point != None):
+                self.collision_point_sprite.visible = True
+                self.collision_point_sprite.position =  collision_point
+                self.collision_point = collision_point
+                is_collision = True
+
+        if not is_collision:
+            self.collision_point_sprite.visible = False
+            self.collision_point = []
