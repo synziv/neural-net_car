@@ -4,24 +4,30 @@ from pyglet.gl import *
 from pyglet import clock
 
 from pyglet.window import key
-from map import initObstacle
+import torch
+import mymap
 from rocket import rocket
+import ai
+import population
+
 
 
 
 window = pyglet.window.Window()
+mymap.window_dimensions = (window.width, window.height)
 batch = pyglet.graphics.Batch()
 
 keys = key.KeyStateHandler()
 window.push_handlers(keys)
 
-initObstacle(batch)
+mymap.initObstacle(batch)
+mymap.init_reward_gates(batch)
+
+fps_display = pyglet.window.FPSDisplay(window=window)
 
 
 
-
-
-rocket = rocket(batch)
+rocket = rocket(batch, None, False)
 
 
 
@@ -29,19 +35,33 @@ rocket = rocket(batch)
 def on_draw():
     window.clear()
     batch.draw()
+    fps_display.draw()
 
-# def move(dt, p_x):
-#    p_x += dt * 10
 
+mpopulation = population.Population(30, batch)
 
 
 
 def update(dt):
-    rocket.update(dt, keys)
-    #rocket.check_collisions(obstacle)
+    if(mpopulation.alive_agents > 0):
+        #print("update")
+        mpopulation.update(dt)
+        pyglet.clock.tick()
+    else:
+        print("----------------------")
+        print("new generation")
+        if(not mpopulation.calculating):
+            mpopulation.selection()
+    
+    # if(rocket.status == "alive"):
+    #     rocket.update(dt, keys)
+
+    
+    
     
 
-clock.schedule_interval(update, 1/90.0 )
+clock.schedule(update)
+
 
 pyglet.app.run()
 

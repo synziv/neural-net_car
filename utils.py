@@ -39,3 +39,9 @@ def calculate_end_point(vision_line, old_angle, new_position):
     eol_y = ((-old_x * math.sin(diff_angle) + old_y * math.cos(diff_angle)) + new_position[1])
 
     return (eol_x, eol_y)
+
+def collision_point_circle(point, circle):
+    if point != []:
+        if math.dist(point, circle.position) < circle.radius:
+            return True
+    return False
