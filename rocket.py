@@ -104,9 +104,12 @@ class rocket:
         self.sprite.y = self.position[1]
 
         rotation_degree = math.degrees(self.rotation)
+        collisions = np.array([])
+
 
         for vision_line in self.vision_lines:
             vision_line.update(rotation_degree, self.position)
+            collisions = np.append(collisions, vision_line.collision_point)
         
         for obstacle in mymap.obstacles:
             if(collides_with(self.sprite, obstacle.sprite)):
@@ -118,20 +121,20 @@ class rocket:
         if(self.current_reward_gate_id < len(mymap.reward_gates) and 
             collides_with(self.sprite, mymap.reward_gates[self.current_reward_gate_id].sprite)):
             self.points += 25 +  100 / ((self.life_reward) * 0.2)
-            #print(self.points)
             self.current_reward_gate_id += 1
             self.life_reward = 0
-            #mymap.reward_gates.pop(0)
-            #print("woohoo")
+
 
         if(collision_point_circle(self.position, mymap.big_prize)):
             #print("big prize")
             self.status = "won"
             self.points += 100+  1000 / (self.life_reward * 0.2)
+
         if(collision_wall(self.position)):
             self.status = "dead"
             self.points = self.points * 0.95
             #print("dead by wall")
+
         if(self.life > 200):
             self.status = "dead"
             #print("dead by life")
@@ -145,7 +148,6 @@ class rocket:
             self.life_reward += 1
             self.sprite.color = (255, 22, 20)
         
-        self.calculate_shortest_distance_to_reward()
         self.data = torch.tensor([self.position[0], self.position[1], self.rotation, self.points, *self.flattened_collision_points()])
     
     def flattened_collision_points(self):

@@ -38,7 +38,7 @@ def on_draw():
     fps_display.draw()
 
 
-mpopulation = population.Population(30, batch)
+mpopulation = population.Population(100, batch)
 
 
 
@@ -60,7 +60,7 @@ def update(dt):
     
     
 
-clock.schedule(update)
+clock.schedule_interval(update, 1/60.0 )
 
 
 pyglet.app.run()

@@ -9,7 +9,7 @@ import random
 
 class Population:
     def __init__(self, num_of_agents, batch):
-        self.agents = [rocket(batch, AI(22, 12, 4), False) for agent in range(num_of_agents)]
+        self.agents = [rocket(batch, AI(22, 20, 4), False) for agent in range(num_of_agents)]
         self.pop_size = num_of_agents
         self.alive_agents = num_of_agents
         self.calculating = False
