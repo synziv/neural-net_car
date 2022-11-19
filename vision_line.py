@@ -6,12 +6,13 @@ import math
 from utils import calculate_end_point
 
 class vision_line:
-    def __init__(self, origin, origin_angle, batch, show_vision_line):
+    def __init__(self, origin, origin_angle,length, batch, show_vision_line):
         self.rotation = 0
         self.origin_angle = -origin_angle
-        self.line = shapes.Line(origin[0], origin[1], origin[0]+300, origin[1], color=(255, 22, 20), batch=batch)
+        self.line = shapes.Line(origin[0], origin[1], origin[0]+length, origin[1], color=(255, 22, 20), batch=batch)
         self.collision_point = []
-        self.collision_dist = 300
+        self.collision_dist = 200
+        self.length = length
         self.collision_point_sprite = shapes.Circle(0, 0, 5, color=(255, 255, 255), batch=batch)
 
         x2, y2 = calculate_end_point(self, self.origin_angle, origin)
@@ -47,11 +48,15 @@ class vision_line:
         smallest_dist = 1000
         end = (self.line.x2, self.line.y2)
         origin = (self.line.x, self.line.y)
+
+        collision_point = None
         for obstacle in mymap.obstacles:
             for line in obstacle.obstacle_lines:
                 collision_point = getCollisionPoint(origin[0], origin[1], end[0], end[1], line[0][0], line[0][1], line[1][0],line[1][1])
                 if(collision_point != None):
-                    dist = math.dist(origin, collision_point)            
+                    dist = math.dist(origin, collision_point)   
+                    #print("origin\n", origin)
+                    #print("end\n", end)         
                     is_collision = True
                     if(dist < smallest_dist):
                         smallest_dist = dist
@@ -61,6 +66,7 @@ class vision_line:
                 elif not is_collision:
                     self.collision_point_sprite.visible = False
                     self.collision_point = [-1, -1]
+        #print(self.collision_point)
         return is_collision
     
     def check_collisions_window(self):

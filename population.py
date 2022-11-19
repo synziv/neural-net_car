@@ -1,19 +1,24 @@
 import array
 import copy
 import numpy as np
+import pandas as pd
 import torch
 from ai import AI
 from rocket import rocket
 import random
+import mymap
 
 
 class Population:
     def __init__(self, num_of_agents, batch):
-        self.agents = [rocket(batch, AI(22, 20, 4), False) for agent in range(num_of_agents)]
+        self.agents = [rocket(batch, AI(6, 20, 4), True) for agent in range(num_of_agents)]
         self.pop_size = num_of_agents
         self.alive_agents = num_of_agents
         self.calculating = False
         self.batch = batch
+        self.all_visual_lines = np.array([])
+
+        self.init_vision_lines()
     
     def update(self, dt):
         self.alive_agents = 0
@@ -23,6 +28,62 @@ class Population:
                 #print(alive_agents)
                 agent.update(dt)
         
+    def init_vision_lines(self):
+        self.all_visual_lines = np.vstack([[pd.DataFrame(data={
+            "x": np.full(11, 100), 
+            "y": np.full(11, 100), 
+            "x2": np.full(11, 100 + 200), #origine + length of vision line
+            "y2": np.full(11, 100), 
+            "length": np.full(11, 200), 
+            "angle": np.arange(-75, 76, 15),
+        })]]*self.pop_size)
+        # a = [[1, 2, 3], [4, 5, 6]]
+        # b = [[7, 8, 9], [10, 11, 12]]
+        # c = np.vstack([a, b])
+        self.update_vision_lines()
+        print(self.all_visual_lines)
+
+
+    
+    def calculate_vision_lines(self, rotation_degree = 0):
+        old_angle = self.vision_lines1["angle"].copy()
+        
+        self.vision_lines1["angle"] = rotation_degree
+
+        old_x = self.vision_lines1["x2"] - self.vision_lines1["x"]
+        old_y = self.vision_lines1["y2"] - self.vision_lines1["y"]
+
+        diff_angle = np.radians( -(self.vision_lines1["angle"] - old_angle ))
+
+        self.vision_lines1["x2"] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.position[0])
+        self.vision_lines1["y2"] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.position[1])
+
+        self.vision_lines1["x"] = self.position[0]
+        self.vision_lines1["y"] = self.position[1]
+
+
+
+
+
+
+
+
+
+
+
+    def update_vision_lines(self):
+        x1 = self.all_visual_lines[:,:,0]
+        y1 = self.all_visual_lines[:,:,1]
+        x2 = self.all_visual_lines[:,:,2]
+        y2 = self.all_visual_lines[:,:,3]
+        
+        x3 = mymap.obstaclesDf["x1"].values
+        y3 = mymap.obstaclesDf["y1"].values
+        x4 = mymap.obstaclesDf["x2"].values
+        y4 = mymap.obstaclesDf["y2"].values
+
+
+
 
 
     def selection(self):

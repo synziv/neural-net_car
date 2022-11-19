@@ -38,23 +38,23 @@ def on_draw():
     fps_display.draw()
 
 
-mpopulation = population.Population(100, batch)
+#mpopulation = population.Population(2, batch)
 
 
 
 def update(dt):
-    if(mpopulation.alive_agents > 0):
-        #print("update")
-        mpopulation.update(dt)
-        pyglet.clock.tick()
-    else:
-        print("----------------------")
-        print("new generation")
-        if(not mpopulation.calculating):
-            mpopulation.selection()
+    # if(mpopulation.alive_agents > 0):
+    #     #print("update")
+    #     mpopulation.update(dt)
+    #     pyglet.clock.tick()
+    # else:
+    #     print("----------------------")
+    #     print("new generation")
+    #     if(not mpopulation.calculating):
+    #         mpopulation.selection()
     
-    # if(rocket.status == "alive"):
-    #     rocket.update(dt, keys)
+    if(rocket.status == "alive"):
+        rocket.update(dt, keys)
 
     
     

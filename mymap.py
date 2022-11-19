@@ -1,4 +1,5 @@
 from turtle import circle
+import pandas as pd
 from pyglet import shapes, window
 
 #windows lines hardcoded
@@ -16,6 +17,7 @@ window_dimensions = (0, 0)
 
 #obstacle
 obstacles = []
+obstaclesDf = []
 class rect:
     def __init__(self, x, y, width, height, new_color,rotation, batch):
         self.sprite = (shapes.Rectangle(x, y, height, width, color=new_color, batch=batch) if rotation == -90
@@ -27,13 +29,21 @@ class rect:
             [(self.sprite.x + self.sprite.width, self.sprite.y + self.sprite.height), (self.sprite.x, self.sprite.y + self.sprite.height)],
             [(self.sprite.x, self.sprite.y + self.sprite.height), (self.sprite.x, self.sprite.y)]
         ]
+        self.df = pd.DataFrame(data={
+            "x1": [self.sprite.x, self.sprite.x + self.sprite.width, self.sprite.x + self.sprite.width, self.sprite.x],
+            "y1": [self.sprite.y, self.sprite.y, self.sprite.y + self.sprite.height, self.sprite.y + self.sprite.height],
+            "x2": [self.sprite.x + self.sprite.width, self.sprite.x + self.sprite.width, self.sprite.x, self.sprite.x],
+            "y2": [self.sprite.y, self.sprite.y + self.sprite.height, self.sprite.y + self.sprite.height, self.sprite.y]
+        })
 
 def initObstacle(batch):
     global obstacles
+    global obstaclesDf
     obstacles = [
         rect(0, 150, 350, 20, (255, 20, 0),0, batch),
         rect(250, 350, 400, 20,(255, 20, 0),0, batch),
     ]
+    obstaclesDf = pd.concat([obstacle.df for obstacle in obstacles])
 
 def init_reward_gates(batch):
     global reward_gates
