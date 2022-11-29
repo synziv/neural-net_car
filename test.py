@@ -60,22 +60,25 @@ uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - 
 
 intersectionX = np.where((0 <= uA) & (uA <= 1), x1 + (uA * (x2 - x1)), np.nan)
 intersectionY = np.where((0 <= uB) & (uB <= 1), y1 + (uA * (y2 - y1)), np.nan)
-
+print("intersectionX", intersectionX[ :])
 
 
 test = np.stack((intersectionX, intersectionY), axis=2)
 
-
-dist = np.sqrt(((test[:, :, 0] - x1[0])**2 + (test[:, :, 1] - y1[0])**2).astype(float))
+dist = np.sqrt(((intersectionX[:] - x1[0])**2 + (intersectionY[:] - y1[0])**2).astype(float))
+#dist = np.sqrt(((test[:, :, 0] - x1[0])**2 + (test[:, :, 1] - y1[0])**2).astype(float))
+# print("dist", dist)
 min_row = np.nanargmin(dist, axis=1)
 print("test\n", test)
 coll_points = test[np.arange(len(test)), min_row]
 print("test1\n", coll_points)
-# final = np.dstack((test, dist))
-# print("final\n", final)
-# s_d = np.nanmin(final, axis=1)
-#print("Version Optimise: ", time.time() - start)
-#print("\nsmallest_dist\n", s_d)
+print("tito: ", intersectionX[np.arange(len(intersectionX)), min_row])
+coll_points_X = intersectionX[np.arange(len(intersectionX)), min_row]
+coll_points_Y = intersectionY[np.arange(len(intersectionY)), min_row]
+print("test1\n", coll_points_X)
+print("test1\n", coll_points_Y)
+
+
 print("***************")
 
 
@@ -126,4 +129,30 @@ for(v_l) in x:
 
 #print("Version naive: ", time.time() - start)
 
+# nb = range(2)
 
+# col = ["x", "y", "x2", "y2", "length", "angle"]
+
+# multi = pd.MultiIndex.from_product([nb, col], names=["nb", "col"])
+# df = pd.DataFrame(np.array([[100, 100, 100 + 200, 100, 200, 76] * 2]*11), 
+#                             columns=multi,
+#                             index=range(11))
+
+# print(df)
+# df[0, "x"] = 420.98
+# print(df)
+
+rockets = np.vstack([[pd.DataFrame(data={
+            "x": [100], 
+            "y": [100], 
+            "rotation": [0],
+            "x_speed": [0], 
+            "y_speed": [0], 
+            "acceleration": [0],
+            "points": [0],
+            "life": [0],
+            "current_reward_gate_id": [0],
+        })]]*2)
+
+print(rockets)
+#print(rockets[:, 0])

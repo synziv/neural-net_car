@@ -38,24 +38,28 @@ class rocket:
         self.batch = batch
 
         self.vision_lines = [
-            #vision_line(self.position, 0, 200,batch, self.show_vision_lines),
+            vision_line(self.position, 0, 200,batch, self.show_vision_lines),
             vision_line(self.position, -15, 200, batch, self.show_vision_lines),
-            #vision_line(self.position, 15, 200, batch, self.show_vision_lines), 
-            # vision_line(self.position, -30, batch, self.show_vision_lines),
-            # vision_line(self.position, 30, batch, self.show_vision_lines), 
-            # vision_line(self.position, -60, batch, self.show_vision_lines),
-            # vision_line(self.position, 60, batch, self.show_vision_lines),
-            # vision_line(self.position, -90, batch, self.show_vision_lines),
-            # vision_line(self.position, 90, batch, self.show_vision_lines)
+            vision_line(self.position, 15, 200, batch, self.show_vision_lines), 
+            vision_line(self.position, -30,200, batch, self.show_vision_lines),
+            vision_line(self.position, 30,200, batch, self.show_vision_lines), 
+            vision_line(self.position, -45,200, batch, self.show_vision_lines),
+            vision_line(self.position, 45,200, batch, self.show_vision_lines), 
+            vision_line(self.position, -60,200, batch, self.show_vision_lines),
+            vision_line(self.position, 60,200, batch, self.show_vision_lines),
+            vision_line(self.position, -75,200, batch, self.show_vision_lines),
+            vision_line(self.position, 75,200, batch, self.show_vision_lines), 
+            vision_line(self.position, -90,200, batch, self.show_vision_lines),
+            vision_line(self.position, 90,200, batch, self.show_vision_lines)
         ]
 
         self.vision_lines1 = pd.DataFrame(data={
-            "x": np.full(3, self.position[0]), 
-            "y": np.full(3, self.position[1]), 
-            "x2": np.full(3, self.position[0] + 200), 
-            "y2": np.full(3, self.position[1]), 
-            "length": np.full(3, 200), 
-            "angle": [0, -15, 15]
+             "x": np.full(11, 100), 
+            "y": np.full(11, 100), 
+            "x2": np.full(11, 100 + 200), #origine + length of vision line
+            "y2": np.full(11, 100), 
+            "length": np.full(11, 200), 
+            "angle": np.arange(-75, 76, 15),
         })
         # self.vision_lines1 = pd.DataFrame(data={
         #     "x": [self.position[0]], 
@@ -141,7 +145,7 @@ class rocket:
 
     def update_vision_lines(self, rotation = 0):
         self.calculate_vision_lines(rotation)
-        self.check_collisions_vision_lines()
+        return self.check_collisions_vision_lines()
 
     #Calulate vision lines with vectorization
     def calculate_vision_lines(self, rotation_degree = 0):
@@ -161,93 +165,77 @@ class rocket:
         self.vision_lines1["y"] = self.position[1]
 
         #juste pour montrer les lignes de collisions
-        for row in self.vision_lines1.itertuples():
-            self.lines[row.Index].x = row.x
-            self.lines[row.Index].y = row.y
-            self.lines[row.Index].x2 = row.x2
-            self.lines[row.Index].y2 = row.y2
+        # for row in self.vision_lines1.itertuples():
+        #     self.lines[row.Index].x = row.x
+        #     self.lines[row.Index].y = row.y
+        #     self.lines[row.Index].x2 = row.x2
+        #     self.lines[row.Index].y2 = row.y2
     
     #Calculate vision lines collision points with vectorization
     def check_collisions_vision_lines(self):
+        #start = time.time()
+        
         x1 = self.vision_lines1["x"].to_numpy()[:, None]
         y1 = self.vision_lines1["y"].to_numpy()[:, None]
         x2 = self.vision_lines1["x2"].to_numpy()[:, None]
         y2 = self.vision_lines1["y2"].to_numpy()[:, None]
+        # end = time.time()
+        # print("init1: ", end - start)
 
+        #start = time.time()
         x3 = mymap.obstaclesDf["x1"].values
         y3 = mymap.obstaclesDf["y1"].values
         x4 = mymap.obstaclesDf["x2"].values
         y4 = mymap.obstaclesDf["y2"].values
+        # end = time.time()
+        # print("init2: ", end - start)
+        
 
+
+        #start = time.time()
         uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
         uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
+        #end = time.time()
+        #print("init: ", end - start)
+        # end = time.time()
+        # print("uA-uB: ", end - start)
         
-
+        
+        #start = time.time()
         intersectionX = np.where((0 <= uA) & (uA <= 1), x1 + (uA * (x2 - x1)), np.inf)
         intersectionY = np.where((0 <= uB) & (uB <= 1), y1 + (uA * (y2 - y1)), np.inf)
+        # end = time.time()
+        # print("intersection: ", end - start)
 
-        test = np.stack((intersectionX, intersectionY), axis=2)
+        # start = time.time()
+        # test = np.stack((intersectionX, intersectionY), axis=2)
+        # end = time.time()
+        # print("stack: ", end - start)
 
         #calculate the distance between the car and the collision point for each vision line
-        dist = np.sqrt(((test[:, :, 0] - x1[0])**2 + (test[:, :, 1] - y1[0])**2).astype(float))
-        
+        #start = time.time()
+        dist = np.sqrt(((intersectionX[:] - x1[0])**2 + (intersectionY[:] - y1[0])**2).astype(float))
+
         #get the minimum distance row index
         min_row = np.nanargmin(dist, axis=1)
-        coll_points = test[np.arange(len(test)), min_row]
+        coll_points_X = intersectionX[np.arange(len(intersectionX)), min_row]
+        coll_points_Y = intersectionY[np.arange(len(intersectionY)), min_row]
+        # end = time.time()
+        # print("dist: ", end - start)
         #print(coll_points)
 
         #showing collision points
-        for i in range(len(coll_points)):
-            #print(i)
-            self.col_points[i].x = coll_points[i][0]
-            self.col_points[i].y = coll_points[i][1]
-            if(np.isnan(coll_points[i][0])):
-                self.col_points[i].visible = False
-            else:
-                self.col_points[i].visible = True
-        #print("s_d[0]", s_d[0]) 
+        # for i in range(len(coll_points)):
+        #     #print(i)
+        #     self.col_points[i].x = coll_points[i][0]
+        #     self.col_points[i].y = coll_points[i][1]
+        #     if(np.isnan(coll_points[i][0])):
+        #         self.col_points[i].visible = False
+        #     else:
+        #         self.col_points[i].visible = True
+
+        return [coll_points_X, coll_points_Y]
         
-        
-
-
-    def collision_point_with_line(self, line):
-        x1 = line.x
-        y1 = line.y
-        x2 = line.x2
-        y2 = line.y2
-
-        x3 = self.vision_lines1["x"]
-        y3 = self.vision_lines1["y"]
-        x4 = self.vision_lines1["x2"]
-        y4 = self.vision_lines1["y2"]
-
-        uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
-
-        interX = x1 + (uA * (x2 - x1))
-        interY = y1 + (uA * (y2 - y1))
-
-        res_df = pd.DataFrame(data={"x": interX, "y": interY})
-
-        res_df.replace([np.inf, -np.inf], np.nan, inplace=True)
-        print(res_df)
-
-
-
-        if(collision_point != None):
-            dist = math.dist(origin, collision_point)            
-            is_collision = True
-            if(dist < smallest_dist):
-                smallest_dist = dist
-                self.collision_point_sprite.visible = self.show_vision_line
-                self.collision_point_sprite.position =  collision_point
-                self.collision_point = collision_point
-            elif not is_collision:
-                    self.collision_point_sprite.visible = False
-                    self.collision_point = [-1, -1]
-
-
-
-        return res_df
 
 
 
@@ -282,14 +270,18 @@ class rocket:
         rotation_degree = math.degrees(self.rotation)
         collisions = np.array([])
 
+        start = time.time()
+        collisions = self.update_vision_lines(rotation_degree)
+        # print(collisions)
 
-        self.update_vision_lines(rotation_degree)
-        
 
-
-        for vision_line in self.vision_lines:
-            vision_line.update(rotation_degree, self.position)
-            collisions = np.append(collisions, vision_line.collision_point)
+        # for vision_line in self.vision_lines:
+        #     vision_line.update(rotation_degree, self.position)
+        #     collisions = np.append(collisions, vision_line.collision_point)
+        #print(collisions)
+        end = time.time()
+        print("total time: ", end - start)
+        print("---------------------------------")
         
         for obstacle in mymap.obstacles:
             if(collides_with(self.sprite, obstacle.sprite)):
