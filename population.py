@@ -8,6 +8,8 @@ from rocket import rocket
 import random
 import mymap
 from pyglet import shapes
+import math
+import time
 
 
 class Population:
@@ -19,12 +21,13 @@ class Population:
         self.batch = batch
         self.all_visual_lines = np.array([])
         self.rockets = np.array([])
-
-        self.init_vision_lines()
+        self.render_v_l = []
+        self.rocket_sprites = [shapes.Rectangle(0, 0, 30, 60, color=(255, 22, 20), batch=batch) for i in range(num_of_agents)]
+        
         self.init_rockets()
+        self.init_vision_lines()
 
 
-        self.rocket_sprites = np.full(self.pop_size, shapes.Rectangle(0, 0, 30, 60, color=(255, 22, 20), batch=batch))
 
 
 
@@ -51,8 +54,27 @@ class Population:
             0,   #points 7
             0,   #reward_gate_id 8
         ]]*self.pop_size)
+        self.rockets = {
+            'x' : self.rockets[:, 0].astype(np.float32),
+            'y' : self.rockets[:, 1].astype(np.float32),
+            'x_speed' : self.rockets[:, 2].astype(np.float32),
+            'y_speed' : self.rockets[:, 3].astype(np.float32),
+            'rotation' : self.rockets[:, 4].astype(np.float32),
+            'acceleration' : self.rockets[:, 5].astype(np.float32),
+            'life' : self.rockets[:, 6],
+            'points' : self.rockets[:, 7],
+            'reward_gate_id' : self.rockets[:, 8]
+        }
 
-        print(self.rockets)
+        for i in range(self.pop_size):
+            self.rocket_sprites[i].x = self.rockets["x"][i]
+            self.rocket_sprites[i].y = self.rockets["y"][i]
+            self.rocket_sprites[i].anchor_x = 15
+            self.rocket_sprites[i].anchor_y = 30
+            self.rocket_sprites[i].rotation = 75
+            self.rocket_sprites[i].rotation = self.rockets["rotation"][i]
+
+
 
         # self.rockets = np.vstack([[pd.DataFrame(data={
         #     "x": [100], 
@@ -84,10 +106,13 @@ class Population:
         # multi = pd.MultiIndex.from_product([nb, col], names=["nb", "col"])
         # self.all_visual_lines = pd.DataFrame(np.array([[100, 100, 100 + 200, 100, 200, 76] * self.pop_size]*11), #11 is the nb of vision lines per rockets
         #                             columns=multi,
-        #                             index=range(11))    
+        #                             index=range(11))  
+
+        center_x = self.rockets['x'][0] + (30 / 2)
+        center_y = self.rockets['y'][0] + (60 / 2)
         v_l = [[
-            100, #x
-            100, #y
+            center_x, #x
+            center_y, #y
             100 + 200, # x1 #origine + length of vision line
             100, #x2
             200, #length
@@ -97,8 +122,38 @@ class Population:
         v_l = np.append(v_l, ag, axis=1)
 
         self.all_visual_lines = np.array([v_l] * self.pop_size)
+        print("center_x", center_x)
+        print("center_y", center_y)
+        self.render_v_l = [[
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(200,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
+            shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch)
+            ] for _ in range(self.pop_size)
+        ]
+        self.render_col_points = [[
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch),
+            shapes.Circle(center_x, center_y, 5, color=(255, 255, 255), batch=self.batch)
+            ] for _ in range(self.pop_size)
+        ]
 
-        #self.calculate_vision_lines()
+        self.calculate_vision_lines()
         #self.update_vision_lines()
         
 
@@ -106,20 +161,26 @@ class Population:
 
 
     def update_rockets(self):
-        self.rockets[:, 4] += 1
-        print(self.rockets)
-        self.rockets["x_speed"] += np.cos(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
-        self.rockets["y_speed"] += np.sin(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
+        #self.rockets['x'] += 1
+        self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
+        self.rockets['rotation'] += np.random.randint(-1, 2, self.pop_size)
+        #self.rockets['rotation'] += 1
+        
+        self.rockets["x_speed"] = np.cos(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
+        self.rockets["y_speed"] = np.sin(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
         self.rockets["x"] += self.rockets["x_speed"]
         self.rockets["y"] += self.rockets["y_speed"]
 
-
+        self.calculate_vision_lines()
 
         #render rockets
+        start = time.time()
         for i in range(self.pop_size):
-            self.rocket_sprites[i].x = self.rockets[i]["x"]
-            self.rocket_sprites[i].y = self.rockets[i]["y"]
-            self.rocket_sprites[i].rotation = self.rockets[i]["rotation"]
+            self.rocket_sprites[i].x = self.rockets["x"][i]
+            self.rocket_sprites[i].y = self.rockets["y"][i]
+            self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
+        end = time.time()
+        print("for-loop: ", end - start)
 
 
 
@@ -131,26 +192,32 @@ class Population:
 
     
     def calculate_vision_lines(self, rotation_degree = 0):
-        print("angle: ", self.all_visual_lines[:,:,5])
         old_angle = self.all_visual_lines[:,:,5].copy()
 
-        self.all_visual_lines[:,:,5] = rotation_degree
+        self.all_visual_lines[:,:,5] = self.rockets['rotation'][:, None]
 
         old_x = self.all_visual_lines[:,:,2] - self.all_visual_lines[:,:,0] #x1-x
         old_y = self.all_visual_lines[:,:,3] - self.all_visual_lines[:,:,1] #y1-y
 
         diff_angle = np.radians( -(self.all_visual_lines[:,:,5] - old_angle ))
 
-        self.all_visual_lines[:,:,2] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.position[0])
-        self.all_visual_lines[:,:,3] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.position[1])
+        #print("vison_l part: ", self.all_visual_lines["x"])
 
-        self.all_visual_lines["x"] = self.position[0]
-        self.all_visual_lines["y"] = self.position[1]
+        self.all_visual_lines[:,:,2] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.rockets['x'][:, None])
+        self.all_visual_lines[:,:,3] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.rockets['y'][:, None])
+
+        self.all_visual_lines[:,:,0] = self.rockets['x'][:, None]
+        self.all_visual_lines[:,:,1] = self.rockets['y'][:, None]
 
         #show vision_lines
-        # for rocket_i in range(self.rockets):
-        #     for line_i in range(self.all_visual_lines[rocket_i]):
-        #         self.all_visual_lines[rocket_i][line_i].set_data([self.all_visual_lines[rocket_i][line_i]["x"], self.all_visual_lines[rocket_i][line_i]["x2"]], [self.all_visual_lines[rocket_i][line_i]["y"], self.all_visual_lines[rocket_i][line_i]["y2"]])
+        # for rocket_i in range(self.pop_size):
+        #     for line_i in range(len(self.all_visual_lines[rocket_i])):
+        #         #self.all_visual_lines[rocket_i][line_i].set_data([self.all_visual_lines[rocket_i][line_i]["x"], self.all_visual_lines[rocket_i][line_i]["x2"]], [self.all_visual_lines[rocket_i][line_i]["y"], self.all_visual_lines[rocket_i][line_i]["y2"]])
+        #         #print("test: ", self.render_v_l[rocket_i][line_i].x)
+        #         self.render_v_l[rocket_i][line_i].x = self.all_visual_lines[rocket_i][line_i][0]
+        #         self.render_v_l[rocket_i][line_i].y = self.all_visual_lines[rocket_i][line_i][1]
+        #         self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines[rocket_i][line_i][2]
+        #         self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines[rocket_i][line_i][3]
 
 
 
