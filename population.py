@@ -130,7 +130,10 @@ class Population:
             'length' : self.all_visual_lines[:, :, 4].astype(np.float32),
             'angle' : self.all_visual_lines[:, :, 5].astype(np.float32),
         }
-        print(self.all_visual_lines)
+        print(self.all_visual_lines['x'])
+        print(self.all_visual_lines['y'])
+        print(self.all_visual_lines['x2'])
+        print(self.all_visual_lines['y2'])
 
         self.render_v_l = [[
             shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
@@ -203,31 +206,27 @@ class Population:
 
         old_angle = self.all_visual_lines['angle'].copy()
 
-        self.all_visual_lines['angle'] = self.rockets['rotation'].copy()
+        self.all_visual_lines['angle'] = self.rockets['rotation'][:, None].copy()
 
         old_x = self.all_visual_lines['x2'] - self.all_visual_lines['x']
-        old_y = self.all_visual_lines['y2'] - self.all_visual_lines['y'] 
+        old_y = self.all_visual_lines['y2'] - self.all_visual_lines['y']
 
         diff_angle = np.radians( -(self.all_visual_lines['angle'] - old_angle ))
 
+        self.all_visual_lines['x2'] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.rockets['x'][:, None])
+        self.all_visual_lines['y2'] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.rockets['y'][:, None])
 
-        self.all_visual_lines['x2'] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.rockets['x'])
-        self.all_visual_lines['y2'] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.rockets['y'])
+        self.all_visual_lines['x'] = self.rockets['x'][:, None].copy()
+        self.all_visual_lines['y'] = self.rockets['y'][:, None].copy()
 
-        self.all_visual_lines['x'] = self.rockets['x'].copy()
-        self.all_visual_lines['y'] = self.rockets['y'].copy()
-
-
-        print("-------------------")
 
         #show vision_lines
-        for rocket_i in range(self.pop_size):
-            for line_i in range(len(self.all_visual_lines['x2'][rocket_i])):
-
-                self.render_v_l[rocket_i][line_i].x = self.all_visual_lines['x']
-                self.render_v_l[rocket_i][line_i].y = self.all_visual_lines['y']
-                self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines['x2'][rocket_i, line_i]
-                self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines['y2'][rocket_i, line_i]
+        # for rocket_i in range(self.pop_size):
+        #     for line_i in range(len(self.all_visual_lines['x2'][rocket_i])):
+        #         self.render_v_l[rocket_i][line_i].x = self.all_visual_lines['x'][rocket_i]
+        #         self.render_v_l[rocket_i][line_i].y = self.all_visual_lines['y'][rocket_i]
+        #         self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines['x2'][rocket_i, line_i]
+        #         self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines['y2'][rocket_i, line_i]
 
 
 
