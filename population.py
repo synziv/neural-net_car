@@ -122,8 +122,16 @@ class Population:
         v_l = np.append(v_l, ag, axis=1)
 
         self.all_visual_lines = np.array([v_l] * self.pop_size)
-        print("center_x", center_x)
-        print("center_y", center_y)
+        self.all_visual_lines = {
+            'x' : self.all_visual_lines[:, :, 0].astype(np.float32),
+            'y' : self.all_visual_lines[:, :, 1].astype(np.float32),
+            'x2' : self.all_visual_lines[:, :, 2].astype(np.float32),
+            'y2' : self.all_visual_lines[:, :, 3].astype(np.float32),
+            'length' : self.all_visual_lines[:, :, 4].astype(np.float32),
+            'angle' : self.all_visual_lines[:, :, 5].astype(np.float32),
+        }
+        print(self.all_visual_lines)
+
         self.render_v_l = [[
             shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
             shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
@@ -174,13 +182,13 @@ class Population:
         self.calculate_vision_lines()
 
         #render rockets
-        start = time.time()
+        #start = time.time()
         for i in range(self.pop_size):
             self.rocket_sprites[i].x = self.rockets["x"][i]
             self.rocket_sprites[i].y = self.rockets["y"][i]
             self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
-        end = time.time()
-        print("for-loop: ", end - start)
+        # end = time.time()
+        # print("for-loop: ", end - start)
 
 
 
@@ -192,52 +200,82 @@ class Population:
 
     
     def calculate_vision_lines(self, rotation_degree = 0):
-        old_angle = self.all_visual_lines[:,:,5].copy()
 
-        self.all_visual_lines[:,:,5] = self.rockets['rotation'][:, None]
+        old_angle = self.all_visual_lines['angle'].copy()
 
-        old_x = self.all_visual_lines[:,:,2] - self.all_visual_lines[:,:,0] #x1-x
-        old_y = self.all_visual_lines[:,:,3] - self.all_visual_lines[:,:,1] #y1-y
+        self.all_visual_lines['angle'] = self.rockets['rotation'].copy()
 
-        diff_angle = np.radians( -(self.all_visual_lines[:,:,5] - old_angle ))
+        old_x = self.all_visual_lines['x2'] - self.all_visual_lines['x']
+        old_y = self.all_visual_lines['y2'] - self.all_visual_lines['y'] 
 
-        #print("vison_l part: ", self.all_visual_lines["x"])
+        diff_angle = np.radians( -(self.all_visual_lines['angle'] - old_angle ))
 
-        self.all_visual_lines[:,:,2] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.rockets['x'][:, None])
-        self.all_visual_lines[:,:,3] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.rockets['y'][:, None])
 
-        self.all_visual_lines[:,:,0] = self.rockets['x'][:, None]
-        self.all_visual_lines[:,:,1] = self.rockets['y'][:, None]
+        self.all_visual_lines['x2'] = ((old_x * np.cos(diff_angle) + old_y * np.sin(diff_angle)) + self.rockets['x'])
+        self.all_visual_lines['y2'] = ((-old_x * np.sin(diff_angle) + old_y * np.cos(diff_angle)) + self.rockets['y'])
+
+        self.all_visual_lines['x'] = self.rockets['x'].copy()
+        self.all_visual_lines['y'] = self.rockets['y'].copy()
+
+
+        print("-------------------")
 
         #show vision_lines
-        # for rocket_i in range(self.pop_size):
-        #     for line_i in range(len(self.all_visual_lines[rocket_i])):
-        #         #self.all_visual_lines[rocket_i][line_i].set_data([self.all_visual_lines[rocket_i][line_i]["x"], self.all_visual_lines[rocket_i][line_i]["x2"]], [self.all_visual_lines[rocket_i][line_i]["y"], self.all_visual_lines[rocket_i][line_i]["y2"]])
-        #         #print("test: ", self.render_v_l[rocket_i][line_i].x)
-        #         self.render_v_l[rocket_i][line_i].x = self.all_visual_lines[rocket_i][line_i][0]
-        #         self.render_v_l[rocket_i][line_i].y = self.all_visual_lines[rocket_i][line_i][1]
-        #         self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines[rocket_i][line_i][2]
-        #         self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines[rocket_i][line_i][3]
+        for rocket_i in range(self.pop_size):
+            for line_i in range(len(self.all_visual_lines['x2'][rocket_i])):
+
+                self.render_v_l[rocket_i][line_i].x = self.all_visual_lines['x']
+                self.render_v_l[rocket_i][line_i].y = self.all_visual_lines['y']
+                self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines['x2'][rocket_i, line_i]
+                self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines['y2'][rocket_i, line_i]
 
 
 
-
-
-
-
-
-
-
-    def update_vision_lines(self):
-        x1 = self.all_visual_lines[:,:,0]
-        y1 = self.all_visual_lines[:,:,1]
-        x2 = self.all_visual_lines[:,:,2]
-        y2 = self.all_visual_lines[:,:,3]
+    #Calculate vision lines collision points with vectorization
+    def check_collisions_vision_lines(self):
+        #start = time.time()
         
+        x1 = self.vision_lines1["x"].to_numpy()[:, None]
+        y1 = self.vision_lines1["y"].to_numpy()[:, None]
+        x2 = self.vision_lines1["x2"].to_numpy()[:, None]
+        y2 = self.vision_lines1["y2"].to_numpy()[:, None]
+
+        #start = time.time()
         x3 = mymap.obstaclesDf["x1"].values
         y3 = mymap.obstaclesDf["y1"].values
         x4 = mymap.obstaclesDf["x2"].values
         y4 = mymap.obstaclesDf["y2"].values
+        
+
+
+        uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
+        uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
+        
+        
+        #calulate where the collision points are
+        intersectionX = np.where((0 <= uA) & (uA <= 1), x1 + (uA * (x2 - x1)), np.inf)
+        intersectionY = np.where((0 <= uB) & (uB <= 1), y1 + (uA * (y2 - y1)), np.inf)
+
+        #calculate the distance between the car and the collision point for each vision line
+        dist = np.sqrt(((intersectionX[:] - x1[0])**2 + (intersectionY[:] - y1[0])**2).astype(float))
+
+        #get the minimum distance row index
+        min_row = np.nanargmin(dist, axis=1)
+        coll_points_X = intersectionX[np.arange(len(intersectionX)), min_row]
+        coll_points_Y = intersectionY[np.arange(len(intersectionY)), min_row]
+
+
+        #showing collision points
+        for i in range(len(coll_points_X)):
+            #print(i)
+            self.col_points[i].x = coll_points_X[i]
+            self.col_points[i].y = coll_points_Y[i]
+            if(np.isnan(coll_points_X[i]) or np.isnan(coll_points_Y[i])):
+                self.col_points[i].visible = False
+            else:
+                self.col_points[i].visible = True
+
+        return [coll_points_X, coll_points_Y]
 
 
 
