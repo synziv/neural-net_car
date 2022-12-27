@@ -165,11 +165,11 @@ class rocket:
         self.vision_lines1["y"] = self.position[1]
 
         #juste pour montrer les lignes de collisions
-        # for row in self.vision_lines1.itertuples():
-        #     self.lines[row.Index].x = row.x
-        #     self.lines[row.Index].y = row.y
-        #     self.lines[row.Index].x2 = row.x2
-        #     self.lines[row.Index].y2 = row.y2
+        for row in self.vision_lines1.itertuples():
+            self.lines[row.Index].x = row.x
+            self.lines[row.Index].y = row.y
+            self.lines[row.Index].x2 = row.x2
+            self.lines[row.Index].y2 = row.y2
     
     #Calculate vision lines collision points with vectorization
     def check_collisions_vision_lines(self):
@@ -192,25 +192,12 @@ class rocket:
         
 
 
-        #start = time.time()
         uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
         uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1))
-        #end = time.time()
-        #print("init: ", end - start)
-        # end = time.time()
-        # print("uA-uB: ", end - start)
         
         
-        #start = time.time()
         intersectionX = np.where((0 <= uA) & (uA <= 1), x1 + (uA * (x2 - x1)), np.inf)
         intersectionY = np.where((0 <= uB) & (uB <= 1), y1 + (uA * (y2 - y1)), np.inf)
-        # end = time.time()
-        # print("intersection: ", end - start)
-
-        # start = time.time()
-        # test = np.stack((intersectionX, intersectionY), axis=2)
-        # end = time.time()
-        # print("stack: ", end - start)
 
         #calculate the distance between the car and the collision point for each vision line
         #start = time.time()
@@ -218,22 +205,18 @@ class rocket:
 
         #get the minimum distance row index
         min_row = np.nanargmin(dist, axis=1)
-        coll_points_X = intersectionX[np.arange(len(intersectionX)), min_row]
-        coll_points_Y = intersectionY[np.arange(len(intersectionY)), min_row]
-        # end = time.time()
-        # print("dist: ", end - start)
-        #print(coll_points)
+
+        coll_points_X = intersectionX[range(11), min_row]
+        coll_points_Y = intersectionY[range(11), min_row]
 
         #showing collision points
-        # for i in range(len(coll_points)):
-        #     #print(i)
-        #     self.col_points[i].x = coll_points[i][0]
-        #     self.col_points[i].y = coll_points[i][1]
-        #     if(np.isnan(coll_points[i][0])):
-        #         self.col_points[i].visible = False
-        #     else:
-        #         self.col_points[i].visible = True
-
+        for i in range(len(coll_points_X)):
+            self.col_points[i].x = coll_points_X[i]
+            self.col_points[i].y = coll_points_Y[i]
+            if(np.isnan(coll_points_X[i]) or np.isnan(coll_points_Y[i])):
+                self.col_points[i].visible = False
+            else:
+                self.col_points[i].visible = True
         return [coll_points_X, coll_points_Y]
         
 

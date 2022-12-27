@@ -45,6 +45,15 @@ def initObstacle(batch):
     ]
     obstaclesDf = pd.concat([obstacle.df for obstacle in obstacles])
 
+    #adds the window lines to the obstacles
+    for line in window_lines:
+        obstaclesDf = obstaclesDf.append({
+            "x1": line[0][0],
+            "y1": line[0][1],
+            "x2": line[1][0],
+            "y2": line[1][1]
+        }, ignore_index=True)
+
 def init_reward_gates(batch):
     global reward_gates
     global big_prize

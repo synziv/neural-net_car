@@ -130,10 +130,6 @@ class Population:
             'length' : self.all_visual_lines[:, :, 4].astype(np.float32),
             'angle' : self.all_visual_lines[:, :, 5].astype(np.float32),
         }
-        print(self.all_visual_lines['x'])
-        print(self.all_visual_lines['y'])
-        print(self.all_visual_lines['x2'])
-        print(self.all_visual_lines['y2'])
 
         self.render_v_l = [[
             shapes.Line(center_x, center_y, center_x + 200, 0, color=(30,144,255), batch=self.batch),
@@ -172,10 +168,8 @@ class Population:
 
 
     def update_rockets(self):
-        #self.rockets['x'] += 1
         self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
         self.rockets['rotation'] += np.random.randint(-1, 2, self.pop_size)
-        #self.rockets['rotation'] += 1
         
         self.rockets["x_speed"] = np.cos(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
         self.rockets["y_speed"] = np.sin(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
@@ -183,6 +177,7 @@ class Population:
         self.rockets["y"] += self.rockets["y_speed"]
 
         self.calculate_vision_lines()
+        self.check_collisions_vision_lines()
 
         #render rockets
         #start = time.time()
@@ -192,10 +187,6 @@ class Population:
             self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
         # end = time.time()
         # print("for-loop: ", end - start)
-
-
-
-
 
 
 
@@ -234,16 +225,16 @@ class Population:
     def check_collisions_vision_lines(self):
         #start = time.time()
         
-        x1 = self.vision_lines1["x"].to_numpy()[:, None]
-        y1 = self.vision_lines1["y"].to_numpy()[:, None]
-        x2 = self.vision_lines1["x2"].to_numpy()[:, None]
-        y2 = self.vision_lines1["y2"].to_numpy()[:, None]
+        x1 = self.all_visual_lines["x"][:, None]
+        y1 = self.all_visual_lines["y"][:, None]
+        x2 = self.all_visual_lines["x2"][:, None]
+        y2 = self.all_visual_lines["y2"][:, None]
 
         #start = time.time()
-        x3 = mymap.obstaclesDf["x1"].values
-        y3 = mymap.obstaclesDf["y1"].values
-        x4 = mymap.obstaclesDf["x2"].values
-        y4 = mymap.obstaclesDf["y2"].values
+        x3 = mymap.obstaclesDf["x1"].values[:, None]
+        y3 = mymap.obstaclesDf["y1"].values[:, None]
+        x4 = mymap.obstaclesDf["x2"].values[:, None]
+        y4 = mymap.obstaclesDf["y2"].values[:, None]
         
 
 
@@ -260,21 +251,30 @@ class Population:
 
         #get the minimum distance row index
         min_row = np.nanargmin(dist, axis=1)
-        coll_points_X = intersectionX[np.arange(len(intersectionX)), min_row]
-        coll_points_Y = intersectionY[np.arange(len(intersectionY)), min_row]
 
+        intersectionX = np.swapaxes(intersectionX, 1, 2)
+        intersectionY = np.swapaxes(intersectionY, 1, 2)
+
+
+        #get the collision points depending on the closest edge the vision line hits
+        m,n = min_row.shape
+        m = np.arange(m)[:,None]
+        n = np.arange(n)
+
+        coll_points_X = intersectionX[m, n, min_row]
+        coll_points_Y = intersectionY[m, n, min_row]
+        
 
         #showing collision points
-        for i in range(len(coll_points_X)):
-            #print(i)
-            self.col_points[i].x = coll_points_X[i]
-            self.col_points[i].y = coll_points_Y[i]
-            if(np.isnan(coll_points_X[i]) or np.isnan(coll_points_Y[i])):
-                self.col_points[i].visible = False
-            else:
-                self.col_points[i].visible = True
-
-        return [coll_points_X, coll_points_Y]
+        # for rocketI in range(self.pop_size):
+        #     for i in range(coll_points_X.shape[1]):
+        #         self.render_col_points[rocketI][i].x = coll_points_X[rocketI][i]
+        #         self.render_col_points[rocketI][i].y = coll_points_Y[rocketI][i]
+                
+        #         if(np.isnan(coll_points_X[rocketI][i]) or np.isnan(coll_points_Y[rocketI][i])):
+        #             self.render_col_points[rocketI][i].visible = False
+        #         else:
+        #             self.render_col_points[rocketI][i].visible = True
 
 
 
