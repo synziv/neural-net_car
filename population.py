@@ -11,6 +11,10 @@ from pyglet import shapes
 import math
 import time
 
+from utils import collides_with_obstacles, collides_with_reward_gate, collides_with_walls, collision_point_circle
+
+MAX_LIFE = 300
+
 
 class Population:
     def __init__(self, num_of_agents, batch):
@@ -26,6 +30,7 @@ class Population:
         
         self.init_rockets()
         self.init_vision_lines()
+        self.init_brains()
 
 
 
@@ -53,6 +58,8 @@ class Population:
             0,   #life 6
             0,   #points 7
             0,   #reward_gate_id 8
+            0,   #is_dead
+            0,   #life_reward
         ]]*self.pop_size)
         self.rockets = {
             'x' : self.rockets[:, 0].astype(np.float32),
@@ -62,9 +69,20 @@ class Population:
             'rotation' : self.rockets[:, 4].astype(np.float32),
             'acceleration' : self.rockets[:, 5].astype(np.float32),
             'life' : self.rockets[:, 6],
-            'points' : self.rockets[:, 7],
-            'reward_gate_id' : self.rockets[:, 8]
+            'points' : self.rockets[:, 7].astype(np.float32),
+            'reward_gate_id' : self.rockets[:, 8],
+            'is_dead' : self.rockets[:, 9].astype(np.float32),
+            'life_reward' : self.rockets[:, 10].astype(np.float32),
         }
+        self.rocketsData = [
+            torch.tensor([
+                self.rockets["x"][0], 
+                self.rockets["y"][0], 
+                self.rockets["rotation"][0], 
+                self.rockets["points"][0], 
+                *[0] * 11 * 2 # 11 vision lines, 2 values for each (x, y)
+            ])
+        ]* self.pop_size
 
         for i in range(self.pop_size):
             self.rocket_sprites[i].x = self.rockets["x"][i]
@@ -167,9 +185,12 @@ class Population:
 
 
 
+
     def update_rockets(self):
+        start = time.time()
+
         self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
-        self.rockets['rotation'] += np.random.randint(-1, 2, self.pop_size)
+        self.rockets['rotation'] += np.random.randint(0, 2, self.pop_size)
         
         self.rockets["x_speed"] = np.cos(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
         self.rockets["y_speed"] = np.sin(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
@@ -177,16 +198,55 @@ class Population:
         self.rockets["y"] += self.rockets["y_speed"]
 
         self.calculate_vision_lines()
-        self.check_collisions_vision_lines()
+        collisions = self.check_collisions_vision_lines()
+        #end = time.time()
+        #print("vector: ", end - start)
 
-        #render rockets
         #start = time.time()
+        #render rockets
         for i in range(self.pop_size):
-            self.rocket_sprites[i].x = self.rockets["x"][i]
-            self.rocket_sprites[i].y = self.rockets["y"][i]
-            self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
-        # end = time.time()
-        # print("for-loop: ", end - start)
+            if(self.rockets["life"][i] < MAX_LIFE and self.rockets["is_dead"][i] == 0):
+                #check collision with obstacles
+                if(collides_with_obstacles(self.rockets["x"][i], self.rockets["y"][i], mymap.general_obstacles)):
+                    self.rockets["points"][i] *= 0.95
+                    self.rocket_sprites[i].color = (255, 255, 255)
+                    self.rockets["is_dead"][i] = 1
+                #if no collision with obstacles, check collision with walls
+                elif(collides_with_walls(self.rockets["x"][i], self.rockets["y"][i])):
+                    self.rockets["points"][i] *= 0.95
+                    self.rocket_sprites[i].color = (255, 255, 255)
+                    self.rockets["is_dead"][i] = 1
+                    
+                #check collision with reward gates
+                if(self.rockets["reward_gate_id"][i] < len(mymap.reward_gates) and 
+                    collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])):
+                    self.rockets["points"][i] += 25 +  100 / ((self.rockets["life_reward"][i]) * 0.2)
+                    self.rockets["reward_gate_id"] += 1 
+                    self.rockets["life_reward"][i] = 0
+                #check collision with big prize
+                elif(collision_point_circle((self.rockets["x"][i], self.rockets["y"][i]), mymap.big_prize)):
+                    self.rockets["points"][i] += 100+  1000 / (self.life_reward * 0.2)
+
+                self.rockets["life"][i] += 1
+                self.rockets["life_reward"][i] += 1
+                #for rendering
+                self.rocket_sprites[i].x = self.rockets["x"][i]
+                self.rocket_sprites[i].y = self.rockets["y"][i]
+                self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
+
+                #update data
+                self.rocketsData[i] = torch.tensor([
+                    self.rockets["x"][i], 
+                    self.rockets["y"][i], 
+                    self.rockets["rotation"][i], 
+                    self.rockets["points"][i], 
+                    *collisions["x"][i],
+                    *collisions["y"][i],
+                ])
+            else:
+                self.rockets["is_dead"][i] = 1
+        end = time.time()
+        print("for-loop: ", end - start)
 
 
 
@@ -222,6 +282,7 @@ class Population:
 
 
     #Calculate vision lines collision points with vectorization
+    #return a dict of x and y values of collision points
     def check_collisions_vision_lines(self):
         #start = time.time()
         
@@ -263,6 +324,11 @@ class Population:
 
         coll_points_X = intersectionX[m, n, min_row]
         coll_points_Y = intersectionY[m, n, min_row]
+
+        return {
+            "x": coll_points_X, 
+            "y": coll_points_Y
+        }
         
 
         #showing collision points
