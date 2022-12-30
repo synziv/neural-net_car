@@ -13,7 +13,9 @@ import time
 
 from utils import collides_with_obstacles, collides_with_reward_gate, collides_with_walls, collision_point_circle
 
-MAX_LIFE = 300
+MAX_LIFE = 200
+ROTATE_SPEED = 1
+MAX_ACCELERATION = 3
 
 
 class Population:
@@ -30,22 +32,6 @@ class Population:
         
         self.init_rockets()
         self.init_vision_lines()
-        self.init_brains()
-
-
-
-
-
-
-
-    
-    def update(self, dt):
-        self.alive_agents = 0
-        for agent in self.agents:
-            if(agent.status == "alive"):
-                self.alive_agents += 1
-                #print(alive_agents)
-                agent.update(dt)
     
     def init_rockets(self):
         self.rockets = np.array([[
@@ -73,17 +59,18 @@ class Population:
             'reward_gate_id' : self.rockets[:, 8],
             'is_dead' : self.rockets[:, 9].astype(np.float32),
             'life_reward' : self.rockets[:, 10].astype(np.float32),
+            'brain' : [AI(27, 20, 4) for _ in range(self.pop_size)]
         }
         self.rocketsData = [
             torch.tensor([
                 self.rockets["x"][0], 
                 self.rockets["y"][0], 
-                self.rockets["rotation"][0], 
-                self.rockets["points"][0], 
+                self.rockets["rotation"][0],
+                self.rockets["x_speed"][0],
+                self.rockets["y_speed"][0],
                 *[0] * 11 * 2 # 11 vision lines, 2 values for each (x, y)
-            ])
-        ]* self.pop_size
-
+            ]) for i in range(self.pop_size)
+        ]
         for i in range(self.pop_size):
             self.rocket_sprites[i].x = self.rockets["x"][i]
             self.rocket_sprites[i].y = self.rockets["y"][i]
@@ -92,39 +79,8 @@ class Population:
             self.rocket_sprites[i].rotation = 75
             self.rocket_sprites[i].rotation = self.rockets["rotation"][i]
 
-
-
-        # self.rockets = np.vstack([[pd.DataFrame(data={
-        #     "x": [100], 
-        #     "y": [100], 
-        #     "rotation": [0],
-        #     "x_speed": [0], 
-        #     "y_speed": [0], 
-        #     "acceleration": [0],
-        #     "points": [0],
-        #     "life": [0],
-        #     "current_reward_gate_id": [0],
-        # })]]*self.pop_size)
         
     def init_vision_lines(self):
-        # df = pd.DataFrame(data={
-        #     "x": np.full(11, 100), 
-        #     "y": np.full(11, 100), 
-        #     "x2": np.full(11, 100 + 200), #origine + length of vision line
-        #     "y2": np.full(11, 100), 
-        #     "length": np.full(11, 200), 
-        #     "angle": np.arange(-75, 76, 15),
-        # })
-        # self.all_visual_lines = np.vstack([df.columns, df.to_numpy()]*self.pop_size)
-
-        # nb = range(self.pop_size)
-
-        # col = ["x", "y", "x2", "y2", "length", "angle"]
-
-        # multi = pd.MultiIndex.from_product([nb, col], names=["nb", "col"])
-        # self.all_visual_lines = pd.DataFrame(np.array([[100, 100, 100 + 200, 100, 200, 76] * self.pop_size]*11), #11 is the nb of vision lines per rockets
-        #                             columns=multi,
-        #                             index=range(11))  
 
         center_x = self.rockets['x'][0] + (30 / 2)
         center_y = self.rockets['y'][0] + (60 / 2)
@@ -182,15 +138,27 @@ class Population:
         #self.update_vision_lines()
         
 
+    def get_controls(self, rocketI):
+        output = self.rockets["brain"][rocketI].read_outputs(self.rocketsData[rocketI])
+        if output == 0:
+            self.rockets['rotation'][rocketI] = self.rockets['rotation'][rocketI] + ROTATE_SPEED
+            
+        if output == 1:
+            self.rockets['rotation'][rocketI] = self.rockets['rotation'][rocketI] - ROTATE_SPEED
 
-
-
+        if output == 2:
+            if(self.rockets['acceleration'][rocketI] < MAX_ACCELERATION):
+                self.rockets['acceleration'][rocketI] += 0.5
+        else:
+            #get slower if the user is not pressing the up key
+            if(self.rockets['acceleration'][rocketI] > 0):
+                self.rockets['acceleration'][rocketI] -= 0.1
 
     def update_rockets(self):
         start = time.time()
 
-        self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
-        self.rockets['rotation'] += np.random.randint(0, 2, self.pop_size)
+        # self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
+        # self.rockets['rotation'] += np.random.randint(0, 2, self.pop_size)
         
         self.rockets["x_speed"] = np.cos(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
         self.rockets["y_speed"] = np.sin(np.radians(self.rockets["rotation"])) * self.rockets["acceleration"]
@@ -211,11 +179,13 @@ class Population:
                     self.rockets["points"][i] *= 0.95
                     self.rocket_sprites[i].color = (255, 255, 255)
                     self.rockets["is_dead"][i] = 1
+                    self.alive_agents -= 1
                 #if no collision with obstacles, check collision with walls
                 elif(collides_with_walls(self.rockets["x"][i], self.rockets["y"][i])):
                     self.rockets["points"][i] *= 0.95
                     self.rocket_sprites[i].color = (255, 255, 255)
                     self.rockets["is_dead"][i] = 1
+                    self.alive_agents -= 1
                     
                 #check collision with reward gates
                 if(self.rockets["reward_gate_id"][i] < len(mymap.reward_gates) and 
@@ -235,18 +205,28 @@ class Population:
                 self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
 
                 #update data
+                # print(i)
+                # print("collisions: ", np.concatenate(collisions[i][:]))
                 self.rocketsData[i] = torch.tensor([
                     self.rockets["x"][i], 
                     self.rockets["y"][i], 
                     self.rockets["rotation"][i], 
-                    self.rockets["points"][i], 
-                    *collisions["x"][i],
-                    *collisions["y"][i],
+                    self.rockets["x_speed"][i],
+                    self.rockets["y_speed"][i],
+                    *np.concatenate(collisions[i][:]) #potentiellement useless et retourner a l'ancienne facon pour performences
+                    # *collisions["x"][i],
+                    # *collisions["y"][i],
                 ])
-            else:
+
+                #get controls
+                self.get_controls(i)
+            #end of life but not yet updated to dead
+            elif(self.rockets["is_dead"][i] == 0):
                 self.rockets["is_dead"][i] = 1
+                self.rocket_sprites[i].color = (255, 255, 255)
+                self.alive_agents -= 1
         end = time.time()
-        print("for-loop: ", end - start)
+        #print("for-loop: ", end - start)
 
 
 
@@ -324,11 +304,14 @@ class Population:
 
         coll_points_X = intersectionX[m, n, min_row]
         coll_points_Y = intersectionY[m, n, min_row]
-
-        return {
-            "x": coll_points_X, 
-            "y": coll_points_Y
-        }
+        # print("x: ", coll_points_X[0])
+        # print("y: ",coll_points_Y[0])
+        # print("stack: ", np.dstack((coll_points_X[:], coll_points_Y[:])))
+        # return {
+        #     "x": coll_points_X, 
+        #     "y": coll_points_Y
+        # }
+        return np.dstack((coll_points_X[:], coll_points_Y[:]))
         
 
         #showing collision points
@@ -347,13 +330,18 @@ class Population:
 
 
     def selection(self):
-        #print(len(self.agents))
         self.calculating = True
         newPopulation = []
-        self.agents.sort(key=lambda x: x.points, reverse=True)
-
+        #self.agents.sort(key=lambda x: x.points, reverse=True)
+        
+        #convert rockets dict to a list of rockets
+        agents = [{
+            "points": self.rockets['points'][i],
+            "brain": self.rockets['brain'][i]
+        } for i in range(self.pop_size)]
+        #print("agents", agents)
         #only keep the best 40%
-        self.agents = self.agents[:int(len(self.agents) * 0.6)]
+        agents = agents[:int(len(agents) * 0.6)]
 
 
         # for agent in self.agents:
@@ -361,9 +349,9 @@ class Population:
 
 
         #normalize fitness
-        self.calc_fitness()
-
-        nb_of_elites = self.elitismSelection(0.2, newPopulation)
+        self.calc_fitness(agents)
+        print("agents", agents)
+        nb_of_elites = self.elitismSelection(0.2, newPopulation, agents)
         #print("nb of elites", nb_of_elites)
         #the last added individual is the best of last gen
         #make it show
@@ -374,41 +362,39 @@ class Population:
 #     this.rockets = newPopulation;
 #     GlobalVar.livingRockets = this.popSize;
 
-        self.cross_over(newPopulation, nb_of_elites)
+        self.cross_over(newPopulation, nb_of_elites, agents)
         self.mutate(newPopulation, nb_of_elites)
-        self.agents = newPopulation
+        #self.agents = newPopulation
         self.calculating = False
-        self.reset()
+        self.reset(newPopulation)
 
-    def calc_fitness(self):
-        max = self.agents[0].points
-        min = self.agents[-1].points
+    def calc_fitness(self, agents):
+        max = agents[0]["points"]
+        min = agents[-1]["points"]
 
         print("max:", max, "min:", min)
 
-        for agent in self.agents:
+        for i in range(len(agents)):
             #print("points: ",agent.points)
-            agent.fitness = (agent.points - min) / (max - min)
+            agents[i]["fitness"] = (agents[i]["points"] - min) / (max - min)
             #print("fitness: ",agent.fitness)
             #print("------------------")
 
 
-    def elitismSelection(self, elitismRate, newPopulation):
+    def elitismSelection(self, elitismRate, newPopulation, agents):
         nbOfElites = int(elitismRate * self.pop_size)
         for i in range(nbOfElites):
-            newPopulation.append(rocket(self.batch, AI(22, 16, 4, self.agents[i].brain.simple_net), False))
-        #print(self.agents[0].brain.simple_net[0].weight)
-        #print(newPopulation[0].brain.simple_net[0].weight)
+            newPopulation.append(rocket(self.batch, AI(26, 16, 4, agents[i]["brain"].simple_net), False))
         return nbOfElites
 
-    def cross_over(self, newPopulation, nb_of_elites):
+    def cross_over(self, newPopulation, nb_of_elites, agents):
         for i in range(self.pop_size - nb_of_elites):
-            parent1 = self.pickRandom(self.agents)
+            parent1 = self.pickRandom(agents)
             #print("parent1", parent1.fitness)
-            parent2 = self.pickRandom(self.agents)
+            parent2 = self.pickRandom(agents)
             #child = copy.deepcopy(parent1)
-            child_brain = AI(22, 16, 4, parent1.brain.simple_net)
-            child_brain.crossover(parent2.brain)
+            child_brain = AI(22, 16, 4, parent1["brain"].simple_net)
+            child_brain.crossover(parent2["brain"])
             child = rocket(self.batch, child_brain, False)
             newPopulation.append(child)
     
@@ -419,15 +405,24 @@ class Population:
             randomPickChance = random.randint(0, 100) / 100
             pickedParent = matingPool[randomParent]
             #print(pickedParent.fitness, randomPickChance, pickedParent.fitness < randomPickChance)
-            if pickedParent.fitness < randomPickChance:
+            if pickedParent["fitness"] < randomPickChance:
                 pickedParent = None
         #print("picked: ", pickedParent.points)
         return pickedParent
 
 
 
-    def reset(self):
+    def reset(self, new_agents):
         self.alive_agents = self.pop_size
+        self.init_rockets()
+        self.init_vision_lines()
+
+        for i in range(self.pop_size):
+            self.rockets['brain'][i] = new_agents[i].brain
+            self.rocket_sprites[i].x = self.rockets['x'][i]
+            self.rocket_sprites[i].y = self.rockets['y'][i]
+            self.rocket_sprites[i].rotation = self.rockets['rotation'][i]
+            self.rocket_sprites[i].color = (255, 22, 20)
     
     
     def mutate(self, newPopulation, nb_of_elites):
