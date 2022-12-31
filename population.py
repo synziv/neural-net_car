@@ -13,9 +13,9 @@ import time
 
 from utils import collides_with_obstacles, collides_with_reward_gate, collides_with_walls, collision_point_circle
 
-MAX_LIFE = 200
-ROTATE_SPEED = 1
-MAX_ACCELERATION = 3
+MAX_LIFE = 300
+ROTATE_SPEED = 3
+MAX_ACCELERATION = 5
 
 
 class Population:
@@ -154,6 +154,39 @@ class Population:
             if(self.rockets['acceleration'][rocketI] > 0):
                 self.rockets['acceleration'][rocketI] -= 0.1
 
+    def calculate_shortest_distance_to_reward(self):
+        for rocketI in range(self.pop_size):
+            points = 0
+            if(self.rockets["reward_gate_id"][rocketI] < len(mymap.reward_gates)):
+                points = self.calculate_shortest_distance_to_reward_gate(rocketI)
+            else:
+                points = math.sqrt((self.rockets["x"][rocketI] - mymap.big_prize.x)**2 + (self.rockets["y"][rocketI] - mymap.big_prize.y )**2)
+            self.rockets["points"][rocketI] += 100 / points
+
+    def calculate_shortest_distance_to_reward_gate(self, rocketI):
+        current_gate = mymap.reward_gates[self.rockets["reward_gate_id"][rocketI]]
+        shortest_distance = 100000
+        #depending on the angle of the reward gate, calculate shortest distance
+        #using multiple points with interval of 20 pixels
+        if(current_gate.rotation == 0):
+            upper_limit = current_gate.sprite.width
+        else:
+            upper_limit = current_gate.sprite.height
+
+        for possible_col in range(0, upper_limit, 20):
+            if(current_gate.rotation == 0):
+               
+                distance = math.sqrt((self.rockets["x"][rocketI] - (current_gate.sprite.x + possible_col))**2 + (self.rockets["y"][rocketI] - current_gate.sprite.y )**2)
+            else:
+            # self.short = shapes.Line(self.position[0], self.position[1], self.current_reward_gate.sprite.x, self.current_reward_gate.sprite.y + possible_col, color=(255, 255, 255), batch=self.batch)
+                distance = math.sqrt((self.rockets["x"][rocketI] - current_gate.sprite.x)**2 + (self.rockets["y"][rocketI] - (current_gate.sprite.y + possible_col))**2)
+        
+            if(distance < shortest_distance):
+                shortest_distance = distance
+        return shortest_distance
+
+
+    
     def update_rockets(self):
         start = time.time()
 
@@ -167,6 +200,8 @@ class Population:
 
         self.calculate_vision_lines()
         collisions = self.check_collisions_vision_lines()
+
+        collisions[collisions[:] == np.inf] = -1
         #end = time.time()
         #print("vector: ", end - start)
 
@@ -195,7 +230,7 @@ class Population:
                     self.rockets["life_reward"][i] = 0
                 #check collision with big prize
                 elif(collision_point_circle((self.rockets["x"][i], self.rockets["y"][i]), mymap.big_prize)):
-                    self.rockets["points"][i] += 100+  1000 / (self.life_reward * 0.2)
+                    self.rockets["points"][i] += 100 + 1000 / (self.life_reward * 0.2)
 
                 self.rockets["life"][i] += 1
                 self.rockets["life_reward"][i] += 1
@@ -205,8 +240,6 @@ class Population:
                 self.rocket_sprites[i].rotation = 90 - self.rockets["rotation"][i]
 
                 #update data
-                # print(i)
-                # print("collisions: ", np.concatenate(collisions[i][:]))
                 self.rocketsData[i] = torch.tensor([
                     self.rockets["x"][i], 
                     self.rockets["y"][i], 
@@ -335,17 +368,15 @@ class Population:
         #self.agents.sort(key=lambda x: x.points, reverse=True)
         
         #convert rockets dict to a list of rockets
+        
         agents = [{
             "points": self.rockets['points'][i],
             "brain": self.rockets['brain'][i]
         } for i in range(self.pop_size)]
-        #print("agents", agents)
+        agents = sorted(agents, key=lambda x: x['points'], reverse=True)
         #only keep the best 40%
         agents = agents[:int(len(agents) * 0.6)]
 
-
-        # for agent in self.agents:
-        #     print(agent.points)
 
 
         #normalize fitness

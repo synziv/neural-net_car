@@ -27,7 +27,7 @@ fps_display = pyglet.window.FPSDisplay(window=window)
 
 
 
-rocket = rocket(batch, None, False)
+
 
 
 
@@ -37,25 +37,26 @@ def on_draw():
     batch.draw()
     fps_display.draw()
 
-
-mpopulation = population.Population(2, batch)
+#rocket = rocket(batch, None, False)
+mpopulation = population.Population(200, batch)
 
 
 
 def update(dt):
+    #print(mpopulation.alive_agents)
     if(mpopulation.alive_agents > 0):
         #print("update")
-        #mpopulation.update(dt)
         mpopulation.update_rockets()
-        pyglet.clock.tick()
-    # else:
-    #     print("----------------------")
-    #     print("new generation")
-    #     if(not mpopulation.calculating):
-    #         mpopulation.selection()
     
-    if(rocket.status == "alive"):
-        rocket.update(dt, keys)
+    else:
+        print("----------------------")
+        print("new generation")
+        if(not mpopulation.calculating):
+            mpopulation.calculate_shortest_distance_to_reward()
+            mpopulation.selection()
+    pyglet.clock.tick()
+    # if(rocket.status == "alive"):
+    #     rocket.update(dt, keys)
 
     
     
