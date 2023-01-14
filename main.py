@@ -46,7 +46,7 @@ def update(dt):
     #print(mpopulation.alive_agents)
     if(mpopulation.alive_agents > 0):
         #print("update")
-        mpopulation.update_rockets()
+        mpopulation.update_rockets(keys)
     
     else:
         print("----------------------")

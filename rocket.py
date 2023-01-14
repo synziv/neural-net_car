@@ -3,7 +3,7 @@ import math
 import pygame
 from pyglet.window import key
 from vision_line import vision_line
-from utils import collides_with, collision_point_circle
+from utils import collides_with_obstacles, collision_point_circle
 import mymap
 import numpy as np
 from fastbook import *
@@ -99,7 +99,7 @@ class rocket:
 
         self.data = torch.tensor([self.position[0], self.position[1], self.rotation, self.points, *[0] * len(self.vision_lines)*2])
 
-        print(self.data.shape)
+        #print(self.data.shape)
     
     #def getControls(self, dt):
     def getControls(self, dt, keys):
@@ -262,15 +262,22 @@ class rocket:
         #     vision_line.update(rotation_degree, self.position)
         #     collisions = np.append(collisions, vision_line.collision_point)
         #print(collisions)
-        end = time.time()
-        print("total time: ", end - start)
-        print("---------------------------------")
+
+        # end = time.time()
+        # print("total time: ", end - start)
+        # print("---------------------------------")
+
+
         
-        for obstacle in mymap.obstacles:
-            if(collides_with(self.sprite, obstacle.sprite)):
-                self.status = "dead"
-                self.points = self.points * 0.95
-                #print("dead by obstacle")
+
+
+
+        
+        # for obstacle in mymap.obstacles:
+        #     if(collides_with(self.sprite, obstacle.sprite)):
+        #         self.status = "dead"
+        #         self.points = self.points * 0.95
+        #         #print("dead by obstacle")
 
 
         if(self.current_reward_gate_id < len(mymap.reward_gates) and 

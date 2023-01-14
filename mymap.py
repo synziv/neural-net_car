@@ -98,7 +98,7 @@ def init_reward_gates(batch):
         rect(280, 350+ 20, 180, 10,(255, 255, 0), -90, batch),
     ]
     for reward_gate in reward_gates:
-        reward_gate.sprite.visible = False
+        #reward_gate.sprite.visible = False
 
         general_reward_gates["x"].append(reward_gate.sprite.x)
         general_reward_gates["y"].append(reward_gate.sprite.y)

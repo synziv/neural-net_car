@@ -13,12 +13,23 @@ def collides_with_obstacles(rocketX, rocketY, obstacles):
             (rocketY <= obstacles["y&height"])
         )
 def collides_with_reward_gate(rocketX, rocketY, reward_gate_id):
-        return np.any(
-            (rocketX >= mymap.general_reward_gates["x"][reward_gate_id]) &
-            (rocketX <= mymap.general_reward_gates["x&width"][reward_gate_id]) &
-            (rocketY >= mymap.general_reward_gates["y"][reward_gate_id]) & 
-            (rocketY <= mymap.general_reward_gates["y&height"][reward_gate_id])
-        )
+    # print("x:", rocketX)
+    # print("y:", rocketY)
+    # print("reward_gate_id:", reward_gate_id)
+    # print("obstacle x:", mymap.general_reward_gates["x"][reward_gate_id])
+    # print("obstacle y:", mymap.general_reward_gates["y"][reward_gate_id])
+    # print("obstacle x&width:", mymap.general_reward_gates["x&width"][reward_gate_id])
+    # print("obstacle y&height:", mymap.general_reward_gates["y&height"][reward_gate_id])
+    # print("rocketX >= mymap.general_reward_gates['x'][reward_gate_id]:", rocketX >= mymap.general_reward_gates["x"][reward_gate_id])
+    # print("rocketX <= mymap.general_reward_gates['x&width'][reward_gate_id]:", rocketX <= mymap.general_reward_gates["x&width"][reward_gate_id])
+    # print("rocketY >= mymap.general_reward_gates['y'][reward_gate_id]:", rocketY >= mymap.general_reward_gates["y"][reward_gate_id])
+    # print("rocketY <= mymap.general_reward_gates['y&height'][reward_gate_id]:", rocketY <= mymap.general_reward_gates["y&height"][reward_gate_id])
+    return np.any(
+        (rocketX >= mymap.general_reward_gates["x"][reward_gate_id]) &
+        (rocketX <= mymap.general_reward_gates["x&width"][reward_gate_id]) &
+        (rocketY >= mymap.general_reward_gates["y"][reward_gate_id]) & 
+        (rocketY <= mymap.general_reward_gates["y&height"][reward_gate_id])
+    )
 def collides_with_walls(rocketX, rocketY):
         return ((rocketX < 0) | (rocketX > mymap.window_dimensions[0]) | (rocketY < 0) | (rocketY > mymap.window_dimensions[1]))
 def getCollisionPoint(x1, y1, x2, y2, x3, y3, x4, y4):

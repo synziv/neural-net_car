@@ -1,5 +1,6 @@
 import array
 import copy
+import keyword
 import numpy as np
 import pandas as pd
 import torch
@@ -9,12 +10,13 @@ import random
 import mymap
 from pyglet import shapes
 import math
+from pyglet.window import key
 import time
 
 from utils import collides_with_obstacles, collides_with_reward_gate, collides_with_walls, collision_point_circle
 
 MAX_LIFE = 300
-ROTATE_SPEED = 3
+ROTATE_SPEED = 3.7
 MAX_ACCELERATION = 5
 
 
@@ -29,7 +31,6 @@ class Population:
         self.rockets = np.array([])
         self.render_v_l = []
         self.rocket_sprites = [shapes.Rectangle(0, 0, 30, 60, color=(255, 22, 20), batch=batch) for i in range(num_of_agents)]
-        
         self.init_rockets()
         self.init_vision_lines()
     
@@ -154,6 +155,24 @@ class Population:
             if(self.rockets['acceleration'][rocketI] > 0):
                 self.rockets['acceleration'][rocketI] -= 0.1
 
+
+    # def get_controls(self, rocketI, keys):
+    #     if keys[key.LEFT]:
+    #         self.rockets['rotation'][rocketI] = self.rockets['rotation'][rocketI] + ROTATE_SPEED
+
+            
+    #     if keys[key.RIGHT]:
+    #         self.rockets['rotation'][rocketI] = self.rockets['rotation'][rocketI] - ROTATE_SPEED
+            
+
+    #     if keys[key.UP]:
+    #         if(self.rockets['acceleration'][rocketI] < MAX_ACCELERATION):
+    #             self.rockets['acceleration'][rocketI] += 0.5
+    #     else:
+    #         #get slower if the user is not pressing the up key
+    #         if(self.rockets['acceleration'][rocketI] > 0):
+    #             self.rockets['acceleration'][rocketI] -= 0.1
+
     def calculate_shortest_distance_to_reward(self):
         for rocketI in range(self.pop_size):
             points = 0
@@ -187,7 +206,7 @@ class Population:
 
 
     
-    def update_rockets(self):
+    def update_rockets(self, keys):
         start = time.time()
 
         # self.rockets['acceleration'][self.rockets['acceleration'] < 5] += np.random.rand() * 0.1
@@ -223,14 +242,18 @@ class Population:
                     self.alive_agents -= 1
                     
                 #check collision with reward gates
+                # if(i == 0):
+                #     collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])
+                
                 if(self.rockets["reward_gate_id"][i] < len(mymap.reward_gates) and 
                     collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])):
-                    self.rockets["points"][i] += 25 +  100 / ((self.rockets["life_reward"][i]) * 0.2)
-                    self.rockets["reward_gate_id"] += 1 
+                    self.rockets["points"][i] += 25 +  100 / ((self.rockets["life"][i]) * 0.2)
+                    self.rockets["reward_gate_id"][i] += 1
                     self.rockets["life_reward"][i] = 0
                 #check collision with big prize
                 elif(collision_point_circle((self.rockets["x"][i], self.rockets["y"][i]), mymap.big_prize)):
-                    self.rockets["points"][i] += 100 + 1000 / (self.life_reward * 0.2)
+                    self.rockets["points"][i] += 100 + 1000 / (self.rockets["life"][i] * 0.2)
+                    self.rockets["life"][i] = MAX_LIFE #stop rockets when they win
 
                 self.rockets["life"][i] += 1
                 self.rockets["life_reward"][i] += 1
@@ -252,6 +275,7 @@ class Population:
                 ])
 
                 #get controls
+                #self.get_controls(i, keys)
                 self.get_controls(i)
             #end of life but not yet updated to dead
             elif(self.rockets["is_dead"][i] == 0):
@@ -259,6 +283,7 @@ class Population:
                 self.rocket_sprites[i].color = (255, 255, 255)
                 self.alive_agents -= 1
         end = time.time()
+        #print("---------------------------------")
         #print("for-loop: ", end - start)
 
 
@@ -371,7 +396,8 @@ class Population:
         
         agents = [{
             "points": self.rockets['points'][i],
-            "brain": self.rockets['brain'][i]
+            "brain": self.rockets['brain'][i],
+            "life": self.rockets['life'][i],
         } for i in range(self.pop_size)]
         agents = sorted(agents, key=lambda x: x['points'], reverse=True)
         #only keep the best 40%
@@ -381,8 +407,9 @@ class Population:
 
         #normalize fitness
         self.calc_fitness(agents)
-        print("agents", agents)
+        #print("agents", agents)
         nb_of_elites = self.elitismSelection(0.2, newPopulation, agents)
+        print("new pop: ", len(newPopulation))
         #print("nb of elites", nb_of_elites)
         #the last added individual is the best of last gen
         #make it show
@@ -397,6 +424,7 @@ class Population:
         self.mutate(newPopulation, nb_of_elites)
         #self.agents = newPopulation
         self.calculating = False
+        
         self.reset(newPopulation)
 
     def calc_fitness(self, agents):
@@ -404,7 +432,7 @@ class Population:
         min = agents[-1]["points"]
 
         print("max:", max, "min:", min)
-
+        print("shortest: ", agents[0]["life"])
         for i in range(len(agents)):
             #print("points: ",agent.points)
             agents[i]["fitness"] = (agents[i]["points"] - min) / (max - min)
@@ -414,8 +442,10 @@ class Population:
 
     def elitismSelection(self, elitismRate, newPopulation, agents):
         nbOfElites = int(elitismRate * self.pop_size)
+        print("nb of elites: ", nbOfElites)
         for i in range(nbOfElites):
-            newPopulation.append(rocket(self.batch, AI(26, 16, 4, agents[i]["brain"].simple_net), False))
+            #newPopulation.append(rocket(self.batch, AI(26, 16, 4, agents[i]["brain"].simple_net), False))
+            newPopulation.append(agents[i]["brain"])
         return nbOfElites
 
     def cross_over(self, newPopulation, nb_of_elites, agents):
@@ -424,10 +454,10 @@ class Population:
             #print("parent1", parent1.fitness)
             parent2 = self.pickRandom(agents)
             #child = copy.deepcopy(parent1)
-            child_brain = AI(22, 16, 4, parent1["brain"].simple_net)
+            child_brain = AI(27, 16, 4, parent1["brain"].simple_net)
             child_brain.crossover(parent2["brain"])
-            child = rocket(self.batch, child_brain, False)
-            newPopulation.append(child)
+            #child = rocket(self.batch, child_brain, False)
+            newPopulation.append(child_brain)
     
     def pickRandom(self, matingPool):
         pickedParent = None
@@ -449,14 +479,15 @@ class Population:
         self.init_vision_lines()
 
         for i in range(self.pop_size):
-            self.rockets['brain'][i] = new_agents[i].brain
+            self.rockets['brain'][i] = new_agents[i]
             self.rocket_sprites[i].x = self.rockets['x'][i]
             self.rocket_sprites[i].y = self.rockets['y'][i]
             self.rocket_sprites[i].rotation = self.rockets['rotation'][i]
             self.rocket_sprites[i].color = (255, 22, 20)
+        
     
     
     def mutate(self, newPopulation, nb_of_elites):
         for i in range(int(nb_of_elites/2), len(newPopulation)):
-            newPopulation[i].brain.mutate(0.01)
+            newPopulation[i].mutate(0.01)
         
