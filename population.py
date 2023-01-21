@@ -35,12 +35,13 @@ class Population:
         self.init_vision_lines()
     
     def init_rockets(self):
+        startingPosition = mymap.getStartingPosition()
         self.rockets = np.array([[
-            100, #x 0
-            100, #y 1
+            startingPosition["x"], #x 0
+            startingPosition["y"], #y 1
             0,   #x_speed 2
             0,   #y_speed 3 
-            0,   #rotation 4
+            startingPosition["rotation"],   #rotation 4
             0,   #acceleration 5
             0,   #life 6
             0,   #points 7
@@ -88,9 +89,9 @@ class Population:
         v_l = [[
             center_x, #x
             center_y, #y
-            100 + 200, # x1 #origine + length of vision line
-            100, #x2
-            200, #length
+            center_x + 175, # x1 #origine + length of vision line
+            center_y, #x2
+            175, #length
         ] ]* 11
         ag = np.arange(-75, 76, 15).reshape(-1 ,1)
 
@@ -176,14 +177,14 @@ class Population:
     def calculate_shortest_distance_to_reward(self):
         for rocketI in range(self.pop_size):
             points = 0
-            if(self.rockets["reward_gate_id"][rocketI] < len(mymap.reward_gates)):
-                points = self.calculate_shortest_distance_to_reward_gate(rocketI)
-            else:
-                points = math.sqrt((self.rockets["x"][rocketI] - mymap.big_prize.x)**2 + (self.rockets["y"][rocketI] - mymap.big_prize.y )**2)
+            #if(self.rockets["reward_gate_id"][rocketI] < len(mymap.reward_gates)):
+            points = self.calculate_shortest_distance_to_reward_gate(rocketI)
+            # else:
+            #     points = math.sqrt((self.rockets["x"][rocketI] - mymap.big_prize.x)**2 + (self.rockets["y"][rocketI] - mymap.big_prize.y )**2)
             self.rockets["points"][rocketI] += 100 / points
 
     def calculate_shortest_distance_to_reward_gate(self, rocketI):
-        current_gate = mymap.reward_gates[self.rockets["reward_gate_id"][rocketI]]
+        current_gate = mymap.reward_gates[mymap.current_stage][self.rockets["reward_gate_id"][rocketI]]
         shortest_distance = 100000
         #depending on the angle of the reward gate, calculate shortest distance
         #using multiple points with interval of 20 pixels
@@ -227,7 +228,16 @@ class Population:
         #start = time.time()
         #render rockets
         for i in range(self.pop_size):
+            
             if(self.rockets["life"][i] < MAX_LIFE and self.rockets["is_dead"][i] == 0):
+
+                #render visions lines
+                # for line_i in range(len(self.all_visual_lines['x2'][i])):
+                #     self.render_v_l[i][line_i].x = self.all_visual_lines['x'][i]
+                #     self.render_v_l[i][line_i].y = self.all_visual_lines['y'][i]
+                #     self.render_v_l[i][line_i].x2 = self.all_visual_lines['x2'][i, line_i]
+                #     self.render_v_l[i][line_i].y2 = self.all_visual_lines['y2'][i, line_i]
+
                 #check collision with obstacles
                 if(collides_with_obstacles(self.rockets["x"][i], self.rockets["y"][i], mymap.general_obstacles)):
                     self.rockets["points"][i] *= 0.95
@@ -245,16 +255,15 @@ class Population:
                 # if(i == 0):
                 #     collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])
                 
-                if(self.rockets["reward_gate_id"][i] < len(mymap.reward_gates) and 
+                if(self.rockets["reward_gate_id"][i] < len(mymap.reward_gates[mymap.current_stage]) -1 and 
                     collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])):
                     self.rockets["points"][i] += 25 +  100 / ((self.rockets["life"][i]) * 0.2)
                     self.rockets["reward_gate_id"][i] += 1
                     self.rockets["life_reward"][i] = 0
-                #check collision with big prize
-                elif(collision_point_circle((self.rockets["x"][i], self.rockets["y"][i]), mymap.big_prize)):
-                    self.rockets["points"][i] += 100 + 1000 / (self.rockets["life"][i] * 0.2)
-                    self.rockets["life"][i] = MAX_LIFE #stop rockets when they win
-
+                #in this case check the collision with the last reward gate
+                elif(collides_with_reward_gate(self.rockets["x"][i], self.rockets["y"][i], self.rockets["reward_gate_id"][i])):
+                        self.rockets["points"][i] += 100 + 1000 / (self.rockets["life"][i] * 0.2)
+                        self.rockets["life"][i] = MAX_LIFE #stop rockets when they win
                 self.rockets["life"][i] += 1
                 self.rockets["life_reward"][i] += 1
                 #for rendering
@@ -275,7 +284,7 @@ class Population:
                 ])
 
                 #get controls
-                #self.get_controls(i, keys)
+                # self.get_controls(i, keys)
                 self.get_controls(i)
             #end of life but not yet updated to dead
             elif(self.rockets["is_dead"][i] == 0):
@@ -294,7 +303,6 @@ class Population:
     def calculate_vision_lines(self, rotation_degree = 0):
 
         old_angle = self.all_visual_lines['angle'].copy()
-
         self.all_visual_lines['angle'] = self.rockets['rotation'][:, None].copy()
 
         old_x = self.all_visual_lines['x2'] - self.all_visual_lines['x']
@@ -309,31 +317,22 @@ class Population:
         self.all_visual_lines['y'] = self.rockets['y'][:, None].copy()
 
 
-        #show vision_lines
-        # for rocket_i in range(self.pop_size):
-        #     for line_i in range(len(self.all_visual_lines['x2'][rocket_i])):
-        #         self.render_v_l[rocket_i][line_i].x = self.all_visual_lines['x'][rocket_i]
-        #         self.render_v_l[rocket_i][line_i].y = self.all_visual_lines['y'][rocket_i]
-        #         self.render_v_l[rocket_i][line_i].x2 = self.all_visual_lines['x2'][rocket_i, line_i]
-        #         self.render_v_l[rocket_i][line_i].y2 = self.all_visual_lines['y2'][rocket_i, line_i]
-
-
 
     #Calculate vision lines collision points with vectorization
     #return a dict of x and y values of collision points
     def check_collisions_vision_lines(self):
         #start = time.time()
-        
         x1 = self.all_visual_lines["x"][:, None]
         y1 = self.all_visual_lines["y"][:, None]
         x2 = self.all_visual_lines["x2"][:, None]
         y2 = self.all_visual_lines["y2"][:, None]
 
         #start = time.time()
-        x3 = mymap.obstaclesDf["x1"].values[:, None]
-        y3 = mymap.obstaclesDf["y1"].values[:, None]
-        x4 = mymap.obstaclesDf["x2"].values[:, None]
-        y4 = mymap.obstaclesDf["y2"].values[:, None]
+        # print("ICIIII: ", mymap.obstaclesDf[mymap.current_stage])
+        x3 = mymap.obstaclesDf[mymap.current_stage]["x1"].values[:, None]
+        y3 = mymap.obstaclesDf[mymap.current_stage]["y1"].values[:, None]
+        x4 = mymap.obstaclesDf[mymap.current_stage]["x2"].values[:, None]
+        y4 = mymap.obstaclesDf[mymap.current_stage]["y2"].values[:, None]
         
 
 
@@ -362,15 +361,6 @@ class Population:
 
         coll_points_X = intersectionX[m, n, min_row]
         coll_points_Y = intersectionY[m, n, min_row]
-        # print("x: ", coll_points_X[0])
-        # print("y: ",coll_points_Y[0])
-        # print("stack: ", np.dstack((coll_points_X[:], coll_points_Y[:])))
-        # return {
-        #     "x": coll_points_X, 
-        #     "y": coll_points_Y
-        # }
-        return np.dstack((coll_points_X[:], coll_points_Y[:]))
-        
 
         #showing collision points
         # for rocketI in range(self.pop_size):
@@ -382,6 +372,12 @@ class Population:
         #             self.render_col_points[rocketI][i].visible = False
         #         else:
         #             self.render_col_points[rocketI][i].visible = True
+
+
+        return np.dstack((coll_points_X[:], coll_points_Y[:]))
+        
+
+
 
 
 
@@ -409,7 +405,6 @@ class Population:
         self.calc_fitness(agents)
         #print("agents", agents)
         nb_of_elites = self.elitismSelection(0.2, newPopulation, agents)
-        print("new pop: ", len(newPopulation))
         #print("nb of elites", nb_of_elites)
         #the last added individual is the best of last gen
         #make it show
@@ -425,14 +420,13 @@ class Population:
         #self.agents = newPopulation
         self.calculating = False
         
-        self.reset(newPopulation)
+        return newPopulation
 
     def calc_fitness(self, agents):
         max = agents[0]["points"]
         min = agents[-1]["points"]
 
         print("max:", max, "min:", min)
-        print("shortest: ", agents[0]["life"])
         for i in range(len(agents)):
             #print("points: ",agent.points)
             agents[i]["fitness"] = (agents[i]["points"] - min) / (max - min)
@@ -442,7 +436,6 @@ class Population:
 
     def elitismSelection(self, elitismRate, newPopulation, agents):
         nbOfElites = int(elitismRate * self.pop_size)
-        print("nb of elites: ", nbOfElites)
         for i in range(nbOfElites):
             #newPopulation.append(rocket(self.batch, AI(26, 16, 4, agents[i]["brain"].simple_net), False))
             newPopulation.append(agents[i]["brain"])
@@ -454,7 +447,7 @@ class Population:
             #print("parent1", parent1.fitness)
             parent2 = self.pickRandom(agents)
             #child = copy.deepcopy(parent1)
-            child_brain = AI(27, 16, 4, parent1["brain"].simple_net)
+            child_brain = AI(27, 20, 4, parent1["brain"].simple_net)
             child_brain.crossover(parent2["brain"])
             #child = rocket(self.batch, child_brain, False)
             newPopulation.append(child_brain)

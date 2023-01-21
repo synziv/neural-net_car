@@ -7,10 +7,10 @@ vec2 = pygame.math.Vector2
 def collides_with_obstacles(rocketX, rocketY, obstacles):
         #if(position[0] < 0 or position[0] > mymap.window_dimensions[0] or position[1] < 0 or position[1] > mymap.window_dimensions[1]):
         return np.any(
-            (rocketX >= obstacles["x"]) &
-            (rocketX <= obstacles["x&width"]) &
-            (rocketY >= obstacles["y"]) & 
-            (rocketY <= obstacles["y&height"])
+            (rocketX >= obstacles[mymap.current_stage]["x"]) &
+            (rocketX <= obstacles[mymap.current_stage]["x&width"]) &
+            (rocketY >= obstacles[mymap.current_stage]["y"]) & 
+            (rocketY <= obstacles[mymap.current_stage]["y&height"])
         )
 def collides_with_reward_gate(rocketX, rocketY, reward_gate_id):
     # print("x:", rocketX)
@@ -25,10 +25,10 @@ def collides_with_reward_gate(rocketX, rocketY, reward_gate_id):
     # print("rocketY >= mymap.general_reward_gates['y'][reward_gate_id]:", rocketY >= mymap.general_reward_gates["y"][reward_gate_id])
     # print("rocketY <= mymap.general_reward_gates['y&height'][reward_gate_id]:", rocketY <= mymap.general_reward_gates["y&height"][reward_gate_id])
     return np.any(
-        (rocketX >= mymap.general_reward_gates["x"][reward_gate_id]) &
-        (rocketX <= mymap.general_reward_gates["x&width"][reward_gate_id]) &
-        (rocketY >= mymap.general_reward_gates["y"][reward_gate_id]) & 
-        (rocketY <= mymap.general_reward_gates["y&height"][reward_gate_id])
+        (rocketX >= mymap.general_reward_gates[mymap.current_stage]["x"][reward_gate_id]) &
+        (rocketX <= mymap.general_reward_gates[mymap.current_stage]["x&width"][reward_gate_id]) &
+        (rocketY >= mymap.general_reward_gates[mymap.current_stage]["y"][reward_gate_id]) & 
+        (rocketY <= mymap.general_reward_gates[mymap.current_stage]["y&height"][reward_gate_id])
     )
 def collides_with_walls(rocketX, rocketY):
         return ((rocketX < 0) | (rocketX > mymap.window_dimensions[0]) | (rocketY < 0) | (rocketY > mymap.window_dimensions[1]))

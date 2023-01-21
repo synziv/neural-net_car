@@ -22,10 +22,15 @@ window.push_handlers(keys)
 
 mymap.initObstacle(batch)
 mymap.init_reward_gates(batch)
+mymap.update_current_stage()
 
 fps_display = pyglet.window.FPSDisplay(window=window)
-
-
+generation = 0
+generationLabel = pyglet.text.Label(('Generation: ' + str(generation)),
+                        font_name='Times New Roman',
+                        font_size=14,
+                        x=60, y=460,
+                        anchor_x='center', anchor_y='center')
 
 
 
@@ -35,6 +40,7 @@ fps_display = pyglet.window.FPSDisplay(window=window)
 def on_draw():
     window.clear()
     batch.draw()
+    generationLabel.draw()
     fps_display.draw()
 
 #rocket = rocket(batch, None, False)
@@ -44,6 +50,7 @@ mpopulation = population.Population(200, batch)
 
 def update(dt):
     #print(mpopulation.alive_agents)
+    global generation
     if(mpopulation.alive_agents > 0):
         #print("update")
         mpopulation.update_rockets(keys)
@@ -51,9 +58,20 @@ def update(dt):
     else:
         print("----------------------")
         print("new generation")
+        generation+=1
+        generationLabel.text = ('Generation: ' + str(generation))
+
+
         if(not mpopulation.calculating):
             mpopulation.calculate_shortest_distance_to_reward()
-            mpopulation.selection()
+            newPop = mpopulation.selection()
+
+            if((mymap.current_stage > 0 and generation == 10) or generation == 30):
+                generation = 0
+                generationLabel.text = ('Generation: ' + str(generation))
+                mymap.current_stage +=1
+                mymap.update_current_stage()
+            mpopulation.reset(newPop)
     pyglet.clock.tick()
     # if(rocket.status == "alive"):
     #     rocket.update(dt, keys)
