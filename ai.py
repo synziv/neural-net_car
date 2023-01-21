@@ -19,14 +19,16 @@ class AI:
         #print(self.simple_net)    
 
 
-        #self.simple_net.apply(self.init_weights.weights)
+        self.simple_net.apply(self.init_weights)
         #w,b = self.simple_net[0].parameters()
        
-        # initialization function, first checks the module type,
+
 # then applies the desired changes to the weights
-    def init_weights(m):
+    def init_weights(self, m):
+        #remove this to have same initial weights every time
+        torch.manual_seed(time.time() * random.randint(0, 100000))
         if isinstance(m, nn.Linear):
-            torch.nn.init.xavier_uniform(m.weight)
+            torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
 
 
